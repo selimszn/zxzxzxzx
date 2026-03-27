@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Watch · Streamglobe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red: #e50914;
+      --bg: #080808;
+      --surface: #111;
+      --surface2: #1a1a1a;
+      --text: #f0f0f0;
+      --muted: #888;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── NAVBAR ── */
+    .navbar {
+      width: 100%;
+      height: 60px;
+      background: rgba(8,8,8,0.97);
+      display: flex;
+      align-items: center;
+      padding: 0 30px;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .back-btn {
+      background: var(--surface);
+      border: 1px solid #2a2a2a;
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+    .back-btn:hover { background: #1c1c1c; }
+
+    .logo { height: 38px; }
+
+    .nav-title {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 20px;
+      letter-spacing: 1px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .nav-title span { color: #fff; }
+
+    /* ── PLAYER ── */
+
+    iframe {
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+    .player-wrap {
+      width: 100%;
+      background: #000;
+      position: relative;
+    }
+
+    .player-frame {
+      width: 100%;
+      aspect-ratio: 16/9;
+      max-height: 72vh;
+      display: block;
+      border: none;
+    }
+
+    /* ── CONTENT BELOW ── */
+    .content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px 30px 60px;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 40px;
+    }
+
+    /* ── TITLE AREA ── */
+    .title-area { }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+    }
+    .type-badge.movie { background: rgba(229,9,20,0.15); color: var(--red); border: 1px solid rgba(229,9,20,0.3); }
+    .type-badge.tv { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .type-badge.anime { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+
+    .content-title {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 52px;
+      line-height: 1;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .meta-pill {
+      background: var(--surface);
+      border: 1px solid #2a2a2a;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .meta-pill.highlight { color: #f59e0b; border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); }
+
+    .overview {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #aaa;
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+
+    .genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .genre-tag {
+      background: transparent;
+      border: 1px solid #2a2a2a;
+      color: #777;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── EPISODE PICKER (TV) ── */
+    .episode-section { }
+
+    .eps-header {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 26px;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .eps-header::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 20px;
+      background: var(--red);
+      border-radius: 2px;
+    }
+
+    .season-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .season-btn {
+      background: var(--surface);
+      border: 1px solid #2a2a2a;
+      color: var(--muted);
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .season-btn:hover { border-color: #444; color: #fff; }
+    .season-btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+    .episode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .episode-grid::-webkit-scrollbar { width: 4px; }
+    .episode-grid::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+    .ep-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid #1e1e1e;
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ep-card:hover { background: #161616; border-color: #333; }
+    .ep-card.active { border-color: var(--red); background: rgba(229,9,20,0.08); }
+
+    .ep-num {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 22px;
+      color: #333;
+      min-width: 32px;
+      text-align: center;
+      transition: color 0.2s;
+    }
+    .ep-card.active .ep-num, .ep-card:hover .ep-num { color: var(--red); }
+
+    .ep-info { flex: 1; min-width: 0; }
+    .ep-title {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .ep-meta { font-size: 11px; color: var(--muted); }
+
+    .ep-play {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .ep-card:hover .ep-play, .ep-card.active .ep-play { background: var(--red); }
+
+    /* ── SIDEBAR ── */
+    .sidebar {}
+
+    .sidebar-title {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 22px;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-title::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 18px;
+      background: var(--red); border-radius: 2px;
+    }
+
+    .similar-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #141414;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .similar-card:hover { opacity: 0.75; }
+    .similar-card:last-child { border-bottom: none; }
+
+    .similar-card img {
+      width: 60px; height: 85px;
+      object-fit: cover;
+      border-radius: 5px;
+      background: #1a1a1a;
+      flex-shrink: 0;
+    }
+    .sc-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    .sc-meta { font-size: 11px; color: var(--muted); }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #1a1a1a;
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .content-grid { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .content-title { font-size: 36px; }
+      .player-frame { max-height: none; }
+    }
+
+    @media (max-width: 600px) {
+      .content { padding: 20px 16px 40px; }
+      .content-title { font-size: 28px; }
+      .episode-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="back-btn">← Back</a>
+  <img src="logo.png" alt="Streamglobe" class="logo" />
+  <div class="nav-title" id="navTitle">Loading...</div>
+</nav>
+
+<div class="player-wrap">
+  <iframe id="playerFrame" class="player-frame" allowfullscreen allow="autoplay; fullscreen"></iframe>
+</div>
+
+<div class="content">
+  <div id="loadingState" class="loading">
+    <div class="spinner"></div>
+    <div style="color:#555;font-size:14px">Loading...</div>
+  </div>
+
+  <div class="content-grid" id="contentGrid" style="display:none">
+    <!-- LEFT -->
+    <div>
+      <div class="title-area">
+        <div class="type-badge" id="typeBadge"></div>
+        <div class="content-title" id="contentTitle"></div>
+        <div class="meta-row" id="metaRow"></div>
+        <p class="overview" id="overview"></p>
+        <div class="genres" id="genresList"></div>
+      </div>
+
+      <!-- TV EPISODE PICKER -->
+      <div class="episode-section" id="episodeSection" style="display:none">
+        <div class="eps-header">Episodes</div>
+        <div class="season-selector" id="seasonSelector"></div>
+        <div class="episode-grid" id="episodeGrid"></div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-title">More Like This</div>
+      <div id="similarList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const TMDB_KEY = 'be70d302735d201a6e47d7044e6c735e'; // ← replace with your TMDB API key
+  const TMDB = 'https://api.themoviedb.org/3';
+  const IMG = 'https://image.tmdb.org/t/p/w342';
+
+  const params = new URLSearchParams(location.search);
+  let mediaId   = params.get('id');
+  let mediaType = params.get('type') || 'movie'; // 'movie' or 'tv'
+  let curSeason  = parseInt(params.get('season') || '1');
+  let curEpisode = parseInt(params.get('episode') || '1');
+
+  async function tmdb(endpoint, p = {}) {
+    const url = new URL(`${TMDB}${endpoint}`);
+    url.searchParams.set('api_key', TMDB_KEY);
+    url.searchParams.set('language', 'en-US');
+    Object.entries(p).forEach(([k, v]) => url.searchParams.set(k, v));
+    const r = await fetch(url);
+    return r.json();
+  }
+
+  // ── BUILD PLAYER URL ──
+  function buildPlayerUrl(id, type, season, episode) {
+    const base = 'https://player.videasy.net';
+    const flags = '?nextButton=true&autoPlay=true&sub=en&hideServer=true&chromecast=false&theme=ff0000';
+    if (type === 'movie') {
+      return `${base}/movie/${id}${flags}`;
+    } else {
+      return `${base}/tv/${id}/${season}/${episode}${flags}`;
+    }
+  }
+
+  function loadPlayer(season, episode) {
+    const url = buildPlayerUrl(mediaId, mediaType, season, episode);
+    document.getElementById('playerFrame').src = url;
+    curSeason = season;
+    curEpisode = episode;
+
+    // Update active ep card
+    document.querySelectorAll('.ep-card').forEach(c => c.classList.remove('active'));
+    const active = document.querySelector(`[data-ep="${episode}"]`);
+    if (active) {
+      active.classList.add('active');
+      active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  // ── SEASONS ──
+  async function loadSeason(seasonNum) {
+    curSeason = seasonNum;
+
+    document.querySelectorAll('.season-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.s) === seasonNum);
+    });
+
+    const data = await tmdb(`/tv/${mediaId}/season/${seasonNum}`);
+    const episodes = data.episodes || [];
+    const grid = document.getElementById('episodeGrid');
+    grid.innerHTML = '';
+
+    episodes.forEach(ep => {
+      const div = document.createElement('div');
+      div.className = 'ep-card' + (ep.episode_number === curEpisode && seasonNum === curSeason ? ' active' : '');
+      div.dataset.ep = ep.episode_number;
+      div.innerHTML = `
+        <div class="ep-num">${String(ep.episode_number).padStart(2, '0')}</div>
+        <div class="ep-info">
+          <div class="ep-title">${ep.name || `Episode ${ep.episode_number}`}</div>
+          <div class="ep-meta">${ep.air_date || ''} ${ep.runtime ? `· ${ep.runtime}m` : ''}</div>
+        </div>
+        <div class="ep-play">▶</div>
+      `;
+      div.onclick = () => loadPlayer(seasonNum, ep.episode_number);
+      grid.appendChild(div);
+    });
+  }
+
+  // ── MAIN LOAD ──
+  async function init() {
+    if (!mediaId) {
+      document.getElementById('loadingState').innerHTML = '<div style="color:#555">No title specified.</div>';
+      return;
+    }
+
+    // Set initial player
+    loadPlayer(curSeason, curEpisode);
+
+    // Fetch details
+    const [details, credits, similar] = await Promise.all([
+      tmdb(`/${mediaType}/${mediaId}`, { append_to_response: 'content_ratings,release_dates' }),
+      tmdb(`/${mediaType}/${mediaId}/credits`),
+      tmdb(`/${mediaType}/${mediaId}/similar`)
+    ]);
+
+    const title = details.title || details.name || 'Unknown';
+    const year = (details.release_date || details.first_air_date || '').slice(0, 4);
+    const rating = details.vote_average?.toFixed(1);
+    const runtime = details.runtime ? `${details.runtime}m` : (details.episode_run_time?.[0] ? `${details.episode_run_time[0]}m/ep` : null);
+
+    // Nav title
+    document.title = `${title} · Streamglobe`;
+    document.getElementById('navTitle').innerHTML = `<span>${title}</span>`;
+
+    // Type badge
+    const badge = document.getElementById('typeBadge');
+    const isAnime = mediaType === 'tv' && (details.genres || []).some(g => g.id === 16);
+    const displayType = isAnime ? 'anime' : mediaType;
+    badge.className = `type-badge ${displayType}`;
+    badge.textContent = displayType === 'movie' ? '🎬 Movie' : displayType === 'anime' ? '🎌 Anime' : '📺 TV Series';
+
+    // Title
+    document.getElementById('contentTitle').textContent = title;
+
+    // Meta
+    const metaItems = [
+      { label: `⭐ ${rating}`, highlight: true },
+      year && { label: year },
+      runtime && { label: runtime },
+      details.status && { label: details.status },
+      details.number_of_seasons && { label: `${details.number_of_seasons} Season${details.number_of_seasons > 1 ? 's' : ''}` }
+    ].filter(Boolean);
+
+    document.getElementById('metaRow').innerHTML = metaItems.map(m =>
+      `<span class="meta-pill ${m.highlight ? 'highlight' : ''}">${m.label}</span>`
+    ).join('');
+
+    // Overview
+    document.getElementById('overview').textContent = details.overview || 'No description available.';
+
+    // Genres
+    document.getElementById('genresList').innerHTML = (details.genres || []).map(g =>
+      `<span class="genre-tag">${g.name}</span>`
+    ).join('');
+
+    // TV: Season/episode picker
+    if (mediaType === 'tv') {
+      document.getElementById('episodeSection').style.display = 'block';
+      const seasons = (details.seasons || []).filter(s => s.season_number > 0);
+      const selector = document.getElementById('seasonSelector');
+      selector.innerHTML = '';
+      seasons.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'season-btn' + (s.season_number === curSeason ? ' active' : '');
+        btn.textContent = `Season ${s.season_number}`;
+        btn.dataset.s = s.season_number;
+        btn.onclick = () => loadSeason(s.season_number);
+        selector.appendChild(btn);
+      });
+      await loadSeason(curSeason);
+    }
+
+    // Similar
+    const similarItems = (similar.results || []).slice(0, 8);
+    const simList = document.getElementById('similarList');
+    simList.innerHTML = '';
+    similarItems.forEach(item => {
+      const t = item.title || item.name;
+      const y = (item.release_date || item.first_air_date || '').slice(0, 4);
+      const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
+      const div = document.createElement('div');
+      div.className = 'similar-card';
+      div.innerHTML = `
+        ${poster ? `<img src="${poster}" alt="${t}">` : `<div style="width:60px;height:85px;background:#1a1a1a;border-radius:5px;flex-shrink:0"></div>`}
+        <div>
+          <div class="sc-title">${t}</div>
+          <div class="sc-meta">⭐ ${item.vote_average?.toFixed(1)} · ${y}</div>
+        </div>
+      `;
+      div.onclick = () => {
+        window.location.href = `watch.html?id=${item.id}&type=${mediaType}`;
+      };
+      simList.appendChild(div);
+    });
+
+    // Done
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('contentGrid').style.display = 'grid';
+  }
+
+  init();
+</script>
+</body>
+</html>
