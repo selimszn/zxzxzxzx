@@ -5,12 +5,13 @@ module.exports = (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const path = req.url.split('/api/server')[1] || '';
-    const targetUrl = `https://player.videasy.net${path}`;
+    // Clean the path
+    const urlPath = req.url.replace('/api/server', '') || '/';
+    const targetUrl = `https://player.videasy.net${urlPath}`;
 
     https.get(targetUrl, {
         headers: {
-            'User-Agent': 'Mozilla/5.0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': 'https://player.videasy.net/'
         }
     }, (proxyRes) => {
@@ -20,21 +21,18 @@ module.exports = (req, res) => {
             const buffer = Buffer.concat(data);
             const contentType = proxyRes.headers['content-type'] || '';
 
-            // Handle HTML files by rewriting all internal links
             if (contentType.includes('text/html')) {
                 let html = buffer.toString('utf-8');
                 
-                // This regex finds anything starting with /_next or /static or /scripts
-                // and slaps /api/server in front of it so your proxy catches it.
-                html = html.replace(/(src|href|action)="\/(?!api\/server)(_next|static|scripts|manifest|api)/g, '$1="/api/server/$2');
+                // ONLY rewrite paths that start with /_next or /static
+                // We use a "Lookahead" to make sure we don't double-proxy
+                html = html.replace(/(src|href)="\/_next/g, '$1="/api/server/_next');
+                html = html.replace(/(src|href)="\/static/g, '$1="/api/server/static');
                 
-                // Also fix background images or fetches in the code
-                html = html.replace(/['"]\/(_next|static|scripts|api)/g, '"/api/server/$1');
-
                 const injections = `
                     <meta charset="utf-8">
                     <style>
-                        body { background: black !important; }
+                        body { background: black !important; color: white; }
                         .MuiBox-root, [class*="mui-"] { background-color: transparent !important; }
                     </style>
                 `;
@@ -44,16 +42,9 @@ module.exports = (req, res) => {
                 return res.status(200).send(html);
             }
 
-            // Handle JS files (some JS files also have internal paths that need fixing)
-            if (contentType.includes('application/javascript')) {
-                let js = buffer.toString('utf-8');
-                js = js.replace(/"\/(_next|static|api)/g, '"/api/server/$1');
-                res.setHeader('Content-Type', contentType);
-                return res.status(200).send(js);
-            }
-
+            // Just pass through everything else (JS, CSS, Images) exactly as they are
             res.setHeader('Content-Type', contentType);
             res.status(proxyRes.statusCode).send(buffer);
         });
-    }).on('error', () => res.status(500).send("Proxy Error"));
+    }).on('error', () => res.status(500).send("Proxy Link Dead"));
 };
