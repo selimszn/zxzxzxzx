@@ -443,17 +443,16 @@
   }
 
   // ── BUILD PLAYER URL ──
- function buildPlayerUrl(id, type, season, episode) {
-    // This points to your Vercel API function
-    const proxyBase = '/api/server'; 
+  function buildPlayerUrl(id, type, season, episode) {
+    // Route through our Vercel proxy so all /_next chunks load correctly
+    const base = '/api/server';
     const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
-    
     if (type === 'movie') {
-        return `${proxyBase}/movie/${id}${flags}`;
+      return `${base}/movie/${id}${flags}`;
     } else {
-        return `${proxyBase}/tv/${id}/${season}/${episode}${flags}`;
+      return `${base}/tv/${id}/${season}/${episode}${flags}`;
     }
-}
+  }
 
   function loadPlayer(season, episode) {
     const url = buildPlayerUrl(mediaId, mediaType, season, episode);
