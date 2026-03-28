@@ -72,10 +72,6 @@
     .nav-title span { color: #fff; }
 
     /* ── PLAYER ── */
-
-    iframe {
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
     .player-wrap {
       width: 100%;
       background: #000;
@@ -384,8 +380,6 @@
 </div>
 
 <script>
-  const TMDB_KEY = 'be70d302735d201a6e47d7044e6c735e'; // ← replace with your TMDB API key
-  const TMDB = 'https://api.themoviedb.org/3';
   const IMG = 'https://image.tmdb.org/t/p/w342';
 
   const params = new URLSearchParams(location.search);
@@ -394,10 +388,10 @@
   let curSeason  = parseInt(params.get('season') || '1');
   let curEpisode = parseInt(params.get('episode') || '1');
 
+  // ── TMDB FETCH (via Vercel proxy — keeps API key server-side) ──
   async function tmdb(endpoint, p = {}) {
-    const url = new URL(`${TMDB}${endpoint}`);
-    url.searchParams.set('api_key', TMDB_KEY);
-    url.searchParams.set('language', 'en-US');
+    const url = new URL('/api/tmdb', location.origin);
+    url.searchParams.set('endpoint', endpoint);
     Object.entries(p).forEach(([k, v]) => url.searchParams.set(k, v));
     const r = await fetch(url);
     return r.json();
@@ -406,7 +400,7 @@
   // ── BUILD PLAYER URL ──
   function buildPlayerUrl(id, type, season, episode) {
     const base = 'https://player.videasy.net';
-    const flags = '?nextButton=true&autoPlay=true&sub=en&hideServer=true&chromecast=false&theme=ff0000';
+    const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
     if (type === 'movie') {
       return `${base}/movie/${id}${flags}`;
     } else {
