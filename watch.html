@@ -443,15 +443,17 @@
   }
 
   // ── BUILD PLAYER URL ──
-  function buildPlayerUrl(id, type, season, episode) {
-    const base = 'https://player.videasy.net';
+ function buildPlayerUrl(id, type, season, episode) {
+    // This points to your Vercel API function
+    const proxyBase = '/api/server'; 
     const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
+    
     if (type === 'movie') {
-      return `${base}/movie/${id}${flags}`;
+        return `${proxyBase}/movie/${id}${flags}`;
     } else {
-      return `${base}/tv/${id}/${season}/${episode}${flags}`;
+        return `${proxyBase}/tv/${id}/${season}/${episode}${flags}`;
     }
-  }
+}
 
   function loadPlayer(season, episode) {
     const url = buildPlayerUrl(mediaId, mediaType, season, episode);
