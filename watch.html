@@ -327,10 +327,55 @@
       .player-frame { max-height: none; }
     }
 
-    @media (max-width: 600px) {
-      .content { padding: 20px 16px 40px; }
-      .content-title { font-size: 28px; }
-      .episode-grid { grid-template-columns: 1fr; }
+    @media (max-width: 768px) {
+      /* Navbar */
+      .navbar { padding: 0 12px; height: 52px; gap: 12px; }
+      .logo { height: 30px; }
+      .nav-title { font-size: 15px; }
+      .back-btn { padding: 6px 12px; font-size: 12px; }
+
+      /* Player fills full width, 16:9 */
+      .player-wrap { position: sticky; top: 52px; z-index: 50; }
+      .player-frame { aspect-ratio: 16/9; max-height: none; }
+
+      /* Content */
+      .content { padding: 16px 14px 40px; }
+      .content-title { font-size: 26px; }
+      .overview { font-size: 13px; }
+
+      /* Type badge */
+      .type-badge { font-size: 10px; padding: 3px 10px; }
+
+      /* Meta pills */
+      .meta-row { gap: 8px; }
+      .meta-pill { font-size: 11px; padding: 4px 10px; }
+
+      /* Genres */
+      .genres { gap: 6px; }
+      .genre-tag { font-size: 10px; padding: 3px 10px; }
+
+      /* Episode section */
+      .eps-header { font-size: 20px; }
+      .season-selector { gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+      .season-selector::-webkit-scrollbar { display: none; }
+      .season-btn { flex-shrink: 0; font-size: 12px; padding: 6px 14px; }
+
+      /* Episode grid: single column on mobile */
+      .episode-grid {
+        grid-template-columns: 1fr;
+        max-height: 340px;
+      }
+      .ep-card { padding: 10px; }
+      .ep-num { font-size: 18px; min-width: 28px; }
+      .ep-title { font-size: 12px; }
+      .ep-meta { font-size: 10px; }
+      .ep-play { width: 26px; height: 26px; font-size: 10px; }
+    }
+
+    @media (max-width: 400px) {
+      .content-title { font-size: 22px; }
+      .navbar { gap: 8px; }
+      .back-btn span { display: none; }
     }
   </style>
 </head>
