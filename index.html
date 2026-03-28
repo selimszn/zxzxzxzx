@@ -625,16 +625,13 @@
 
 <script>
   // ── CONFIG ──
-  const TMDB_KEY = 'be70d302735d201a6e47d7044e6c735e'; // ← replace with your TMDB API key
-  const TMDB = 'https://api.themoviedb.org/3';
   const IMG = 'https://image.tmdb.org/t/p/w342';
   const IMG_BIG = 'https://image.tmdb.org/t/p/w780';
 
-  // ── TMDB FETCH ──
+  // ── TMDB FETCH (via Vercel proxy — keeps API key server-side) ──
   async function tmdb(endpoint, params = {}) {
-    const url = new URL(`${TMDB}${endpoint}`);
-    url.searchParams.set('api_key', TMDB_KEY);
-    url.searchParams.set('language', 'en-US');
+    const url = new URL('/api/tmdb', location.origin);
+    url.searchParams.set('endpoint', endpoint);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     const r = await fetch(url);
     return r.json();
