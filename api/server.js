@@ -20,13 +20,16 @@ module.exports = (req, res) => {
             const buffer = Buffer.concat(data);
             const contentType = proxyRes.headers['content-type'] || '';
 
+            // Handle HTML files by rewriting all internal links
             if (contentType.includes('text/html')) {
                 let html = buffer.toString('utf-8');
                 
-                // FIX: Rewrite relative paths to go through your proxy
-                // This stops the 404s for .js and .css files
-                html = html.replace(/(src|href)="\/_next/g, '$1="/api/server/_next');
-                html = html.replace(/(src|href)="\/static/g, '$1="/api/server/static');
+                // This regex finds anything starting with /_next or /static or /scripts
+                // and slaps /api/server in front of it so your proxy catches it.
+                html = html.replace(/(src|href|action)="\/(?!api\/server)(_next|static|scripts|manifest|api)/g, '$1="/api/server/$2');
+                
+                // Also fix background images or fetches in the code
+                html = html.replace(/['"]\/(_next|static|scripts|api)/g, '"/api/server/$1');
 
                 const injections = `
                     <meta charset="utf-8">
@@ -39,6 +42,14 @@ module.exports = (req, res) => {
                 
                 res.setHeader('Content-Type', 'text/html; charset=utf-8');
                 return res.status(200).send(html);
+            }
+
+            // Handle JS files (some JS files also have internal paths that need fixing)
+            if (contentType.includes('application/javascript')) {
+                let js = buffer.toString('utf-8');
+                js = js.replace(/"\/(_next|static|api)/g, '"/api/server/$1');
+                res.setHeader('Content-Type', contentType);
+                return res.status(200).send(js);
             }
 
             res.setHeader('Content-Type', contentType);
