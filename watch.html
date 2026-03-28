@@ -444,15 +444,11 @@
 
   // ── BUILD PLAYER URL ──
   function buildPlayerUrl(id, type, season, episode) {
-    // Route through our Vercel proxy so all /_next chunks load correctly
-    const base = '/api/server';
-    const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
-    if (type === 'movie') {
-      return `${base}/movie/${id}${flags}`;
-    } else {
-      return `${base}/tv/${id}/${season}/${episode}${flags}`;
-    }
-  }
+  const base = 'https://autumn-snowflake-dc6c.baytemsilci.workers.dev/proxy';
+  const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
+  if (type === 'movie') return `${base}/movie/${id}${flags}`;
+  else return `${base}/tv/${id}/${season}/${episode}${flags}`;
+}
 
   function loadPlayer(season, episode) {
     const url = buildPlayerUrl(mediaId, mediaType, season, episode);
