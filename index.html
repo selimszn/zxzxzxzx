@@ -488,16 +488,99 @@
       letter-spacing: 1px;
     }
 
+    /* ── BOTTOM NAV (mobile only) ── */
+    .bottom-nav { display: none; }
+
     @media (max-width: 768px) {
-      :root { --card-w: 130px; --card-h: 195px; }
-      .section { padding: 0 20px 40px; }
-      .hero-content { left: 20px; bottom: 60px; }
-      .hero-title { font-size: 48px; }
-      .search-wrap { display: none; }
-      .navbar { padding: 0 20px; }
+      :root { --card-w: 120px; --card-h: 180px; }
+
+      .navbar { padding: 0 16px; height: 56px; }
+      .logo { height: 34px; }
       .nav-tabs { display: none; }
-      .full-search-page { padding: 90px 20px 40px; }
-      .fsp-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+
+      .hero { height: 420px; }
+      .hero-content { left: 16px; right: 16px; bottom: 70px; max-width: 100%; }
+      .hero-title { font-size: 36px; }
+      .hero-desc { display: none; }
+      .hero-meta { font-size: 12px; }
+      .hero-btns { gap: 8px; }
+      .btn-watch { padding: 10px 20px; font-size: 13px; }
+      .btn-info { padding: 10px 16px; font-size: 13px; }
+      .search-wrap { display: none; }
+
+      .section { padding: 0 12px 32px; }
+      .section-title { font-size: 20px; }
+      .main-content { padding-bottom: 80px; }
+
+      .genre-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+      .genre-filters::-webkit-scrollbar { display: none; }
+      .genre-chip { flex-shrink: 0; }
+
+      .full-search-page { padding: 76px 12px 100px; }
+      .fsp-title { font-size: 26px; margin-bottom: 20px; }
+      .fsp-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+      .fsp-close { top: 16px; right: 16px; }
+
+      .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: 64px;
+        background: rgba(8,8,8,0.97);
+        border-top: 1px solid #1a1a1a;
+        backdrop-filter: blur(16px);
+        z-index: 200;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 8px;
+      }
+
+      .bn-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 12px;
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: #555;
+        font-family: 'DM Sans', sans-serif;
+        transition: color 0.2s;
+      }
+      .bn-item.active { color: #fff; }
+      .bn-item.active .bn-icon { color: var(--red); }
+      .bn-icon { font-size: 20px; line-height: 1; }
+      .bn-label { font-size: 10px; font-weight: 500; }
+
+      .mobile-search-bar {
+        display: flex;
+        align-items: center;
+        background: rgba(15,15,15,0.95);
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin: 8px 12px 4px;
+        gap: 10px;
+      }
+      .mobile-search-bar input {
+        flex: 1; background: transparent; border: none;
+        color: #fff; outline: none;
+        font-family: 'DM Sans', sans-serif; font-size: 14px;
+      }
+      .mobile-search-bar input::placeholder { color: #444; }
+      .mobile-search-bar button {
+        background: var(--red); border: none; color: #fff;
+        width: 32px; height: 32px; border-radius: 6px;
+        cursor: pointer; font-size: 14px; flex-shrink: 0;
+      }
+    }
+
+    @media (max-width: 400px) {
+      :root { --card-w: 105px; --card-h: 158px; }
+      .hero-title { font-size: 28px; }
     }
   </style>
 </head>
@@ -538,6 +621,12 @@
     </div>
     <div class="search-results" id="searchResults"></div>
   </div>
+</div>
+
+<!-- ── MOBILE SEARCH BAR ── -->
+<div class="mobile-search-bar" id="mobileSearchBar">
+  <input type="text" id="mobileSearchInput" placeholder="Search movies, shows, anime..." />
+  <button onclick="triggerMobileSearch()">🔍</button>
 </div>
 
 <!-- ── MAIN CONTENT ── -->
@@ -622,6 +711,30 @@
 </div>
 
 <footer>© 2025 Streamglobe · Powered by TMDB</footer>
+
+<!-- ── BOTTOM NAV (mobile) ── -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bn-item active" data-tab="home" onclick="switchTab('home')">
+    <span class="bn-icon">🏠</span>
+    <span class="bn-label">Home</span>
+  </button>
+  <button class="bn-item" data-tab="movies" onclick="switchTab('movies')">
+    <span class="bn-icon">🎬</span>
+    <span class="bn-label">Movies</span>
+  </button>
+  <button class="bn-item" data-tab="tv" onclick="switchTab('tv')">
+    <span class="bn-icon">📺</span>
+    <span class="bn-label">TV</span>
+  </button>
+  <button class="bn-item" data-tab="anime" onclick="switchTab('anime')">
+    <span class="bn-icon">🎌</span>
+    <span class="bn-label">Anime</span>
+  </button>
+  <button class="bn-item" onclick="openSearch()">
+    <span class="bn-icon">🔍</span>
+    <span class="bn-label">Search</span>
+  </button>
+</nav>
 
 <script>
   // ── CONFIG ──
@@ -937,12 +1050,22 @@
   let tabsLoaded = { home: true, movies: false, tv: false, anime: false };
 
   function switchTab(name) {
+    // Top nav
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    const btn = document.querySelector(`[data-tab="${name}"]`);
+    const btn = document.querySelector(`.nav-tab[data-tab="${name}"]`);
     if (btn) btn.classList.add('active');
 
+    // Bottom nav
+    document.querySelectorAll('.bn-item[data-tab]').forEach(t => t.classList.remove('active'));
+    const bnBtn = document.querySelector(`.bn-item[data-tab="${name}"]`);
+    if (bnBtn) bnBtn.classList.add('active');
+
+    // Tab content
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById(`tab-${name}`)?.classList.add('active');
+
+    // Scroll to top on mobile tab switch
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (!tabsLoaded[name]) {
       tabsLoaded[name] = true;
@@ -954,6 +1077,15 @@
 
   document.querySelectorAll('.nav-tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // ── MOBILE SEARCH ──
+  function triggerMobileSearch() {
+    const q = document.getElementById('mobileSearchInput').value.trim();
+    if (q) openSearch(q);
+  }
+  document.getElementById('mobileSearchInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') triggerMobileSearch();
   });
 
   // ── NAVBAR SCROLL ──
