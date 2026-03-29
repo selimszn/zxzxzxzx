@@ -597,6 +597,9 @@
     <button class="nav-tab" data-tab="anime">Anime</button>
     <button class="nav-tab" onclick="openSearch()">🔍 Search</button>
   </div>
+  <div id="navProfile" onclick="window.location.href='profile.html'" style="cursor:pointer;width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:2px solid #333;overflow:hidden;margin-left:12px;flex-shrink:0;transition:border-color 0.2s;" title="Profile">
+    <img id="navProfileImg" src="" alt="Profile" style="width:100%;height:100%;object-fit:cover;display:none;" />
+  </div>
 </nav>
 
 <!-- ── HERO ── -->
@@ -635,6 +638,15 @@
 
   <!-- HOME TAB -->
   <div class="tab-content active" id="tab-home">
+
+    <!-- Keep Watching (only shown when logged in + has history) -->
+    <div class="section" id="keepWatchingSection" style="display:none">
+      <div class="section-header">
+        <div class="section-title">Keep Watching</div>
+      </div>
+      <div class="cards-row" id="keepWatchingRow"></div>
+    </div>
+
     <div class="section">
       <div class="section-header">
         <div class="section-title">Trending Movies</div>
@@ -737,7 +749,13 @@
   </button>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+  // ── SUPABASE ──
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+  const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   // ── CONFIG ──
   const IMG = 'https://image.tmdb.org/t/p/w342';
   const IMG_BIG = 'https://image.tmdb.org/t/p/w780';
@@ -758,6 +776,48 @@
     window.location.href = url;
   }
 
+  // ── ANILIST API ──
+  async function anilist(query, variables = {}) {
+    const res = await fetch('/api/anilist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables })
+    });
+    const json = await res.json();
+    return json.data;
+  }
+
+  function anilistToCard(media) {
+    // Normalize AniList media into a card-compatible object
+    return {
+      id: media.id,
+      title: media.title?.english || media.title?.romaji || 'Unknown',
+      poster: media.coverImage?.large || media.coverImage?.medium || '',
+      year: media.seasonYear || '',
+      score: media.averageScore ? (media.averageScore / 10).toFixed(1) : 'N/A',
+      episodes: media.episodes,
+      description: media.description?.replace(/<[^>]*>/g, '') || ''
+    };
+  }
+
+  function makeAnimeCard(media) {
+    const info = anilistToCard(media);
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      ${info.poster
+        ? `<img src="${info.poster}" alt="${info.title}" loading="lazy" />`
+        : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#444;text-align:center;padding:10px">${info.title}</div>`}
+      <div class="card-overlay">
+        <div class="card-play">▶</div>
+        <div class="card-title">${info.title}</div>
+        <div class="card-year">${info.year} · 🎌</div>
+      </div>
+    `;
+    div.onclick = () => window.location.href = `watch.html?id=${info.id}&type=anime`;
+    return div;
+  }
+
   // ── CARD BUILDER ──
   function makeCard(item, type) {
     const title = item.title || item.name || 'Unknown';
@@ -775,7 +835,7 @@
         <div class="card-year">${year} · ${type === 'movie' ? '🎬' : type === 'anime' ? '🎌' : '📺'}</div>
       </div>
     `;
-    div.onclick = () => watchTitle(id, type === 'anime' ? 'tv' : type);
+    div.onclick = () => watchTitle(id, type);
     return div;
   }
 
@@ -827,29 +887,41 @@
       hero.insertBefore(img, hero.firstChild);
     }
 
-    document.getElementById('heroWatchBtn').onclick = () => watchTitle(item.id, type === 'anime' ? 'tv' : type);
+    document.getElementById('heroWatchBtn').onclick = () => watchTitle(item.id, type);
   }
 
   // ── HOME DATA ──
   async function loadHome() {
-    // Trending movies row
     const trendMovRow = document.getElementById('trendingMovies');
     makeSkeleton(10).forEach(s => trendMovRow.appendChild(s));
 
-    const [trendMovs, popTV, topR, animeRes] = await Promise.all([
+    const POPULAR_ANIME_QUERY = `
+      query {
+        Page(page: 1, perPage: 20) {
+          media(type: ANIME, sort: POPULARITY_DESC, status_not: NOT_YET_RELEASED) {
+            id title { english romaji } coverImage { large medium }
+            seasonYear averageScore episodes
+          }
+        }
+      }`;
+
+    const [trendMovs, popTV, topR, animeData] = await Promise.all([
       tmdb('/trending/movie/week'),
       tmdb('/tv/popular'),
       tmdb('/movie/top_rated'),
-      tmdb('/discover/tv', { with_genres: '16', with_keywords: '210024|287501', sort_by: 'popularity.desc' })
+      anilist(POPULAR_ANIME_QUERY)
     ]);
 
-    // Hero
     if (trendMovs.results?.[0]) setHero(trendMovs.results[0], 'movie');
 
     fillRow('trendingMovies', trendMovs.results || [], 'movie');
     fillRow('popularTV', popTV.results || [], 'tv');
     fillRow('topRated', topR.results || [], 'movie');
-    fillRow('popularAnime', animeRes.results || [], 'anime');
+
+    // AniList anime row
+    const animeRow = document.getElementById('popularAnime');
+    animeRow.innerHTML = '';
+    (animeData?.Page?.media || []).forEach(m => animeRow.appendChild(makeAnimeCard(m)));
   }
 
   // ── MOVIES TAB ──
@@ -930,13 +1002,18 @@
   let animePage = 1;
   async function loadAnime(reset = false) {
     if (reset) { animePage = 1; document.getElementById('animeGrid').innerHTML = ''; }
-    const data = await tmdb('/discover/tv', {
-      page: animePage,
-      with_genres: '16',
-      with_keywords: '210024|287501',
-      sort_by: 'popularity.desc'
-    });
-    appendCards('animeGrid', data.results || [], 'anime');
+    const query = `
+      query($page: Int) {
+        Page(page: $page, perPage: 30) {
+          media(type: ANIME, sort: POPULARITY_DESC, status_not: NOT_YET_RELEASED) {
+            id title { english romaji } coverImage { large medium }
+            seasonYear averageScore episodes
+          }
+        }
+      }`;
+    const data = await anilist(query, { page: animePage });
+    const grid = document.getElementById('animeGrid');
+    (data?.Page?.media || []).forEach(m => grid.appendChild(makeAnimeCard(m)));
   }
   function loadMoreAnime() { animePage++; loadAnime(); }
 
@@ -969,33 +1046,65 @@
   });
 
   async function doInlineSearch(q) {
-    const data = await tmdb('/search/multi', { query: q, page: 1 });
-    const items = (data.results || []).filter(i => i.media_type !== 'person').slice(0, 8);
-    searchResults.innerHTML = '';
-    if (!items.length) {
-      searchResults.innerHTML = '<div style="padding:16px;color:#555;font-size:13px">No results found</div>';
-    } else {
-      items.forEach(item => {
-        const title = item.title || item.name;
-        const year = (item.release_date || item.first_air_date || '').slice(0, 4);
-        const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
-        const type = item.media_type;
-        const isAnime = type === 'tv' && (item.genre_ids || []).includes(16);
-        const typeLabel = isAnime ? 'anime' : type;
+    const ANIME_SEARCH_QUERY = `
+      query($search: String) {
+        Page(page: 1, perPage: 4) {
+          media(type: ANIME, search: $search) {
+            id title { english romaji } coverImage { medium }
+            seasonYear averageScore
+          }
+        }
+      }`;
 
-        const div = document.createElement('div');
-        div.className = 'search-result-item';
-        div.innerHTML = `
-          ${poster ? `<img src="${poster}" alt="${title}">` : `<div style="width:42px;height:60px;background:#222;border-radius:4px;flex-shrink:0"></div>`}
-          <div class="sri-info">
-            <div class="sri-title">${title}</div>
-            <div class="sri-meta">${year || '—'} · ⭐ ${item.vote_average?.toFixed(1) || 'N/A'}</div>
-          </div>
-          <span class="sri-type ${typeLabel}">${typeLabel.toUpperCase()}</span>
-        `;
-        div.onclick = () => watchTitle(item.id, type);
-        searchResults.appendChild(div);
-      });
+    const [tmdbData, animeData] = await Promise.all([
+      tmdb('/search/multi', { query: q, page: 1 }),
+      anilist(ANIME_SEARCH_QUERY, { search: q })
+    ]);
+
+    const tmdbItems = (tmdbData.results || []).filter(i => i.media_type !== 'person').slice(0, 5);
+    const animeItems = animeData?.Page?.media || [];
+
+    searchResults.innerHTML = '';
+
+    // TMDB results
+    tmdbItems.forEach(item => {
+      const title = item.title || item.name;
+      const year = (item.release_date || item.first_air_date || '').slice(0, 4);
+      const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
+      const type = item.media_type;
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = `
+        ${poster ? `<img src="${poster}" alt="${title}">` : `<div style="width:42px;height:60px;background:#222;border-radius:4px;flex-shrink:0"></div>`}
+        <div class="sri-info">
+          <div class="sri-title">${title}</div>
+          <div class="sri-meta">${year || '—'} · ⭐ ${item.vote_average?.toFixed(1) || 'N/A'}</div>
+        </div>
+        <span class="sri-type ${type}">${type.toUpperCase()}</span>
+      `;
+      div.onclick = () => watchTitle(item.id, type);
+      searchResults.appendChild(div);
+    });
+
+    // AniList anime results
+    animeItems.forEach(media => {
+      const info = anilistToCard(media);
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = `
+        ${info.poster ? `<img src="${info.poster}" alt="${info.title}">` : `<div style="width:42px;height:60px;background:#222;border-radius:4px;flex-shrink:0"></div>`}
+        <div class="sri-info">
+          <div class="sri-title">${info.title}</div>
+          <div class="sri-meta">${info.year || '—'} · ⭐ ${info.score}</div>
+        </div>
+        <span class="sri-type anime">ANIME</span>
+      `;
+      div.onclick = () => window.location.href = `watch.html?id=${info.id}&type=anime`;
+      searchResults.appendChild(div);
+    });
+
+    if (!tmdbItems.length && !animeItems.length) {
+      searchResults.innerHTML = '<div style="padding:16px;color:#555;font-size:13px">No results found</div>';
     }
     searchResults.classList.add('open');
   }
@@ -1013,9 +1122,27 @@
     document.body.style.overflow = 'hidden';
     if (q) {
       document.getElementById('fspQuery').textContent = `"${q}"`;
-      const data = await tmdb('/search/multi', { query: q, page: 1 });
-      const items = (data.results || []).filter(i => i.media_type !== 'person');
-      buildFspGrid(items);
+      document.getElementById('fspGrid').innerHTML = '<div style="color:#555;font-size:14px;grid-column:1/-1">Searching...</div>';
+
+      const ANIME_SEARCH_QUERY = `
+        query($search: String) {
+          Page(page: 1, perPage: 10) {
+            media(type: ANIME, search: $search) {
+              id title { english romaji } coverImage { large medium }
+              seasonYear averageScore
+            }
+          }
+        }`;
+
+      const [tmdbData, animeData] = await Promise.all([
+        tmdb('/search/multi', { query: q, page: 1 }),
+        anilist(ANIME_SEARCH_QUERY, { search: q })
+      ]);
+
+      const tmdbItems = (tmdbData.results || []).filter(i => i.media_type !== 'person');
+      const animeItems = (animeData?.Page?.media || []).map(m => ({ ...anilistToCard(m), _isAnilist: true, _aniId: m.id }));
+
+      buildFspGrid(tmdbItems, animeItems);
     } else {
       document.getElementById('fspQuery').textContent = '';
       document.getElementById('fspGrid').innerHTML = '<div style="color:#555;font-size:14px">Type something to search...</div>';
@@ -1027,14 +1154,14 @@
     document.body.style.overflow = '';
   }
 
-  function buildFspGrid(items) {
+  function buildFspGrid(tmdbItems = [], animeItems = []) {
     const grid = document.getElementById('fspGrid');
     grid.innerHTML = '';
-    items.forEach(item => {
+
+    tmdbItems.forEach(item => {
       const title = item.title || item.name;
       const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
       const type = item.media_type;
-
       const div = document.createElement('div');
       div.className = 'fsp-card';
       div.innerHTML = `
@@ -1044,7 +1171,21 @@
       div.onclick = () => watchTitle(item.id, type);
       grid.appendChild(div);
     });
-    if (!items.length) grid.innerHTML = '<div style="color:#555;font-size:14px;grid-column:1/-1">No results found.</div>';
+
+    animeItems.forEach(info => {
+      const div = document.createElement('div');
+      div.className = 'fsp-card';
+      div.innerHTML = `
+        ${info.poster ? `<img src="${info.poster}" alt="${info.title}" loading="lazy">` : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;padding:10px;font-size:11px;color:#444;text-align:center">${info.title}</div>`}
+        <div class="fsp-card-label">${info.title}<br><span style="color:#c084fc;font-size:9px">🎌 ANIME</span></div>
+      `;
+      div.onclick = () => window.location.href = `watch.html?id=${info.id}&type=anime`;
+      grid.appendChild(div);
+    });
+
+    if (!tmdbItems.length && !animeItems.length) {
+      grid.innerHTML = '<div style="color:#555;font-size:14px;grid-column:1/-1">No results found.</div>';
+    }
   }
 
   // ── TAB SWITCHING ──
@@ -1095,6 +1236,59 @@
   });
 
   // ── INIT ──
+  // ── AUTH INIT ──
+  const DICEBEAR_SEEDS = ['alpha','bravo','charlie','delta','echo','foxtrot','golf','hotel','india','juliet','kilo','lima','mike','nova','oscar','papa','quinn','romeo','sierra','tango','ultra','victor','whiskey','xray','yankee','zulu','cosmic','stellar','nebula','aurora','zenith','apex'];
+
+  async function initAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+
+    const userId = session.user.id;
+
+    // Load profile for avatar
+    const { data: profile } = await sb.from('profiles').select('avatar_id, username').eq('id', userId).single();
+    if (profile && profile.avatar_id) {
+      const seed = DICEBEAR_SEEDS[(profile.avatar_id - 1) % DICEBEAR_SEEDS.length];
+      const img  = document.getElementById('navProfileImg');
+      if (img) { img.src = 'https://api.dicebear.com/9.x/notionists-neutral/svg?seed=' + seed; img.style.display = 'block'; }
+    }
+
+    // Load keep watching
+    const { data: history } = await sb.from('watch_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('watched_at', { ascending: false })
+      .limit(15);
+
+    if (history && history.length) {
+      document.getElementById('keepWatchingSection').style.display = 'block';
+      const row = document.getElementById('keepWatchingRow');
+      row.innerHTML = '';
+      history.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const epLabel = item.media_type === 'tv' && item.season ? `S${item.season}E${item.episode}` : '';
+        card.innerHTML = `
+          ${item.poster_path
+            ? `<img src="https://image.tmdb.org/t/p/w342${item.poster_path}" alt="${item.title}" loading="lazy">`
+            : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#444;text-align:center;padding:8px">${item.title}</div>`}
+          <div class="card-overlay">
+            <div class="card-play">▶</div>
+            <div class="card-title">${item.title}</div>
+            <div class="card-year" style="color:var(--red)">${epLabel || 'Movie'}</div>
+          </div>
+        `;
+        card.onclick = () => {
+          let url = `watch.html?id=${item.tmdb_id}&type=${item.media_type}`;
+          if (item.season) url += `&season=${item.season}&episode=${item.episode}`;
+          window.location.href = url;
+        };
+        row.appendChild(card);
+      });
+    }
+  }
+
+  initAuth();
   loadHome();
 </script>
 </body>
