@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In · Streamglobe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --red: #e50914;
+      --bg: #080808;
+      --surface: #111;
+      --surface2: #1a1a1a;
+      --text: #f0f0f0;
+      --muted: #888;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .bg-video {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0.15;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(10,10,10,0.92);
+      border: 1px solid #1e1e1e;
+      border-radius: 14px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      backdrop-filter: blur(20px);
+    }
+
+    .logo-wrap {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-wrap img { height: 44px; }
+
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 28px;
+      gap: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active { background: var(--surface2); color: #fff; }
+
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #444; }
+    input::placeholder { color: #333; }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--red);
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
+    }
+    .btn-submit:hover { background: #f40612; }
+    .btn-submit:active { transform: scale(0.99); }
+    .btn-submit:disabled { background: #3a0305; color: #666; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+    .msg.error { background: rgba(229,9,20,0.1); border: 1px solid rgba(229,9,20,0.3); color: #ff6b6b; display: block; }
+    .msg.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; display: block; }
+
+    .divider {
+      text-align: center;
+      color: #333;
+      font-size: 12px;
+      margin: 20px 0;
+      position: relative;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 42%;
+      height: 1px;
+      background: #1e1e1e;
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .footer-note {
+      text-align: center;
+      font-size: 12px;
+      color: #333;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <video class="bg-video" autoplay muted loop playsinline>
+    <source src="roller.mp4" type="video/mp4" />
+  </video>
+
+  <div class="card">
+    <div class="logo-wrap">
+      <img src="logo.png" alt="Streamglobe" />
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" onclick="showTab('login')">Sign In</button>
+      <button class="tab" id="tabSignup" onclick="showTab('signup')">Create Account</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="formLogin">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" />
+      </div>
+      <button class="btn-submit" id="btnLogin" onclick="login()">Sign In</button>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="formSignup" style="display:none">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="signupEmail" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signupPassword" placeholder="Min. 6 characters" />
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="signupUsername" placeholder="e.g. moviefan99" />
+      </div>
+      <button class="btn-submit" id="btnSignup" onclick="signup()">Create Account</button>
+      <div class="msg" id="signupMsg"></div>
+    </div>
+
+    <div class="footer-note">© 2025 Streamglobe</div>
+  </div>
+
+  <script>
+    // ── SUPABASE ──
+    const SUPABASE_URL = 'https://rkavxcoabijokzkeqbvm.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_5XohGQpLBO5ACHVl6iUaqg_o4z4X-Pi';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Redirect if already logged in
+    sb.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = 'index.html';
+    });
+
+    function showTab(tab) {
+      document.getElementById('formLogin').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('formSignup').style.display = tab === 'signup' ? 'block' : 'none';
+      document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+      document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+    }
+
+    function showMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg ' + type;
+    }
+
+    async function login() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('btnLogin');
+
+      if (!email || !password) return showMsg('loginMsg', 'Please fill in all fields.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showMsg('loginMsg', error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      } else {
+        showMsg('loginMsg', 'Welcome back! Redirecting...', 'success');
+        setTimeout(() => window.location.href = 'index.html', 800);
+      }
+    }
+
+    async function signup() {
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const username = document.getElementById('signupUsername').value.trim();
+      const btn = document.getElementById('btnSignup');
+
+      if (!email || !password || !username) return showMsg('signupMsg', 'Please fill in all fields.', 'error');
+      if (password.length < 6) return showMsg('signupMsg', 'Password must be at least 6 characters.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+
+      const { data, error } = await sb.auth.signUp({ email, password });
+
+      if (error) {
+        showMsg('signupMsg', error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+      }
+
+      // Save username to profile
+      if (data.user) {
+        await sb.from('profiles').update({ username }).eq('id', data.user.id);
+      }
+
+      showMsg('signupMsg', 'Account created! Signing you in...', 'success');
+      setTimeout(() => window.location.href = 'index.html', 1000);
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const activeTab = document.getElementById('tabLogin').classList.contains('active') ? 'login' : 'signup';
+        if (activeTab === 'login') login();
+        else signup();
+      }
+    });
+  </script>
+</body>
+</html>
