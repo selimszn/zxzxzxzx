@@ -84,6 +84,12 @@
       max-height: 72vh;
       display: block;
       border: none;
+      /* CSS sharpness & contrast boost — subtle but noticeable */
+      filter: contrast(1.06) saturate(1.08) brightness(1.02);
+      image-rendering: high-quality;
+      /* Force GPU compositing for smoother rendering */
+      transform: translateZ(0);
+      will-change: transform;
     }
 
     /* ── CONTENT BELOW ── */
@@ -394,7 +400,6 @@
     id="introVideo"
     src="roller.mkv"
     autoplay
-    
     playsinline
     style="
       position:absolute;
