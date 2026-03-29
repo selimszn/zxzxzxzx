@@ -377,6 +377,7 @@
       .navbar { gap: 8px; }
       .back-btn span { display: none; }
     }
+
   </style>
 </head>
 <body>
@@ -387,7 +388,24 @@
   <div class="nav-title" id="navTitle">Loading...</div>
 </nav>
 
-<div class="player-wrap">
+<div class="player-wrap" style="position:relative;">
+  <!-- Intro video plays first, then fades out revealing the real player -->
+  <video
+    id="introVideo"
+    src="roller.mkv"
+    autoplay
+    
+    playsinline
+    style="
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      z-index:10;
+      transition: opacity 0.8s ease;
+    "
+  ></video>
   <iframe id="playerFrame" class="player-frame" allowfullscreen allow="autoplay; fullscreen"></iframe>
 </div>
 
@@ -444,11 +462,14 @@
 
   // ── BUILD PLAYER URL ──
   function buildPlayerUrl(id, type, season, episode) {
-  const base = 'https://autumn-snowflake-dc6c.baytemsilci.workers.dev/proxy';
-  const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
-  if (type === 'movie') return `${base}/movie/${id}${flags}`;
-  else return `${base}/tv/${id}/${season}/${episode}${flags}`;
-}
+    const base = 'https://player.videasy.net';
+    const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
+    if (type === 'movie') {
+      return `${base}/movie/${id}${flags}`;
+    } else {
+      return `${base}/tv/${id}/${season}/${episode}${flags}`;
+    }
+  }
 
   function loadPlayer(season, episode) {
     const url = buildPlayerUrl(mediaId, mediaType, season, episode);
@@ -595,6 +616,26 @@
     // Done
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('contentGrid').style.display = 'grid';
+  }
+
+  // ── INTRO VIDEO ──
+  const introVideo = document.getElementById('introVideo');
+  if (introVideo) {
+    introVideo.addEventListener('ended', () => {
+      introVideo.style.opacity = '0';
+      introVideo.style.pointerEvents = 'none';
+      setTimeout(() => introVideo.remove(), 800);
+    });
+
+    // Fallback: if video fails to load or errors, skip intro
+    introVideo.addEventListener('error', () => introVideo.remove());
+
+    // Also allow clicking the intro to skip it
+    introVideo.addEventListener('click', () => {
+      introVideo.style.opacity = '0';
+      introVideo.style.pointerEvents = 'none';
+      setTimeout(() => introVideo.remove(), 800);
+    });
   }
 
   init();
