@@ -161,7 +161,7 @@
 
   function buildPlayerUrl(id, type, season, episode) {
     const base  = 'https://player.videasy.net';
-    const flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
+    const flags = '?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=ff0000';
     if (type === 'movie') return `${base}/movie/${id}${flags}`;
     if (type === 'anime') return `${base}/anime/${id}/${episode || 1}/${season || 1}${flags}`;
     return `${base}/tv/${id}/${season}/${episode}${flags}`;
