@@ -278,7 +278,7 @@
       flex-shrink: 0;
     }
     .sri-type.movie { background: rgba(229,9,20,0.2); color: #e50914; }
-    .sri-type.tv { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .sri-type.tv    { background: rgba(59,130,246,0.2); color: #60a5fa; }
     .sri-type.anime { background: rgba(168,85,247,0.2); color: #c084fc; }
 
     /* ── SECTIONS ── */
@@ -722,7 +722,7 @@
   <div class="fsp-grid" id="fspGrid"></div>
 </div>
 
-<footer>© 2025 Streamglobe · Powered by TMDB & AniList</footer>
+<footer>© 2025 Streamglobe · Powered by TMDB</footer>
 
 <!-- ── BOTTOM NAV (mobile) ── -->
 <nav class="bottom-nav" id="bottomNav">
@@ -766,105 +766,21 @@
     return (await fetch(url)).json();
   }
 
-  // ── ANILIST FETCH ──
-  async function anilist(query, variables = {}) {
-    const res = await fetch('/api/anilist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables })
-    });
-    return (await res.json()).data;
-  }
-
-  // ── ANIME DETECTION ──
-  // Returns true if a TMDB item is likely anime (Japanese animation).
-  // Works for both /search/multi results (which have genre_ids) and full detail objects (which have genres[]).
-  function tmdbItemIsAnime(item) {
-    const isJapanese = item.original_language === 'ja';
-    // genre_ids array (search results) or genres array (detail pages)
-    const genreIds = item.genre_ids
-      || (item.genres || []).map(g => g.id);
-    const isAnimation = genreIds.includes(16); // 16 = Animation on TMDB
-    return isJapanese && isAnimation;
-  }
-
-  // Cache: tmdbId → anilistId  (avoids redundant API calls for the same show)
-  const anilistIdCache = {};
-
-  // Look up an AniList id by title + year. Returns null on failure.
-  async function findAnilistId(title, year) {
-    const cacheKey = `${title}|${year}`;
-    if (anilistIdCache[cacheKey] !== undefined) return anilistIdCache[cacheKey];
-
-    const q = `query($s:String){Page(perPage:8){media(search:$s,type:ANIME){id title{english romaji} seasonYear}}}`;
-    try {
-      const data    = await anilist(q, { s: title });
-      const results = data?.Page?.media || [];
-      const match   = results.find(m => String(m.seasonYear) === String(year)) || results[0];
-      const id      = match ? match.id : null;
-      anilistIdCache[cacheKey] = id;
-      return id;
-    } catch {
-      anilistIdCache[cacheKey] = null;
-      return null;
-    }
-  }
-
-  // Given a TMDB item that looks like anime, resolve to an AniList watch URL.
-  // Falls back to type=tv if AniList lookup fails.
-  async function resolveAnimeUrl(item) {
-    const title = item.name || item.title || '';
-    const year  = (item.first_air_date || item.release_date || '').slice(0, 4);
-    const id    = await findAnilistId(title, year);
-    if (id) return `watch.html?id=${id}&type=anime`;
-    // Fallback — still better than a broken player
-    return `watch.html?id=${item.id}&type=tv`;
-  }
-
   // ── NAVIGATION ──
+  // All content uses 'movie' or 'tv' types only — no anime type.
   function watchTitle(id, type, season = null, episode = null) {
     let url = `watch.html?id=${id}&type=${type}`;
     if (season) url += `&season=${season}&episode=${episode || 1}`;
     window.location.href = url;
   }
 
-  // ── ANILIST CARD HELPERS ──
-  function anilistToCard(media) {
-    return {
-      id:          media.id,
-      title:       media.title?.english || media.title?.romaji || 'Unknown',
-      poster:      media.coverImage?.large || media.coverImage?.medium || '',
-      year:        media.seasonYear || '',
-      score:       media.averageScore ? (media.averageScore / 10).toFixed(1) : 'N/A',
-      episodes:    media.episodes,
-      description: (media.description || '').replace(/<[^>]*>/g, '')
-    };
-  }
-
-  function makeAnimeCard(media) {
-    const info = anilistToCard(media);
-    const div  = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `
-      ${info.poster
-        ? `<img src="${info.poster}" alt="${info.title}" loading="lazy" />`
-        : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#444;text-align:center;padding:10px">${info.title}</div>`}
-      <div class="card-overlay">
-        <div class="card-play">▶</div>
-        <div class="card-title">${info.title}</div>
-        <div class="card-year">${info.year} · 🎌</div>
-      </div>`;
-    // AniList cards always have the correct AniList id already
-    div.onclick = () => window.location.href = `watch.html?id=${info.id}&type=anime`;
-    return div;
-  }
-
-  // ── TMDB CARD BUILDER ──
-  // For TV items that might be anime we do an async AniList lookup before navigating.
+  // ── CARD BUILDER ──
+  // type is either 'movie' or 'tv'
   function makeCard(item, type) {
     const title  = item.title || item.name || 'Unknown';
     const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
     const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
+    const icon   = type === 'movie' ? '🎬' : '📺';
 
     const div = document.createElement('div');
     div.className = 'card';
@@ -875,20 +791,9 @@
       <div class="card-overlay">
         <div class="card-play">▶</div>
         <div class="card-title">${title}</div>
-        <div class="card-year">${year} · ${type === 'movie' ? '🎬' : type === 'anime' ? '🎌' : '📺'}</div>
+        <div class="card-year">${year} · ${icon}</div>
       </div>`;
-
-    if (type === 'tv' && tmdbItemIsAnime(item)) {
-      // Async resolve: preload the AniList id in the background so clicking is instant
-      let resolvedUrl = null;
-      resolveAnimeUrl(item).then(url => { resolvedUrl = url; });
-      div.onclick = async () => {
-        window.location.href = resolvedUrl || await resolveAnimeUrl(item);
-      };
-    } else {
-      div.onclick = () => watchTitle(item.id, type);
-    }
-
+    div.onclick = () => watchTitle(item.id, type);
     return div;
   }
 
@@ -913,10 +818,11 @@
 
   // ── HERO ──
   function setHero(item, type) {
-    const title   = item.title || item.name;
-    const year    = (item.release_date || item.first_air_date || '').slice(0, 4);
-    const rating  = item.vote_average?.toFixed(1);
-    const desc    = (item.overview || '').slice(0, 160) + ((item.overview?.length || 0) > 160 ? '…' : '');
+    const title  = item.title || item.name;
+    const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
+    const rating = item.vote_average?.toFixed(1);
+    const desc   = (item.overview || '').slice(0, 160) + ((item.overview?.length || 0) > 160 ? '…' : '');
+    const label  = type === 'movie' ? 'Movie' : 'TV Series';
 
     document.getElementById('heroTitle').textContent = title;
     document.getElementById('heroMeta').innerHTML = `
@@ -924,7 +830,7 @@
       <span class="rating-dot"></span>
       <span>${year}</span>
       <span class="rating-dot"></span>
-      <span>${type === 'movie' ? 'Movie' : type === 'anime' ? 'Anime' : 'TV Series'}</span>`;
+      <span>${label}</span>`;
     document.getElementById('heroDesc').textContent = desc;
 
     if (item.backdrop_path) {
@@ -946,39 +852,40 @@
 
   // ── HOME ──
   async function loadHome() {
+    // Show skeletons while loading
     const trendMovRow = document.getElementById('trendingMovies');
     makeSkeleton(10).forEach(s => trendMovRow.appendChild(s));
 
-    const POPULAR_ANIME_QUERY = `query {
-      Page(page: 1, perPage: 20) {
-        media(type: ANIME, sort: POPULARITY_DESC, status_not: NOT_YET_RELEASED) {
-          id title { english romaji } coverImage { large medium }
-          seasonYear averageScore episodes
-        }
-      }
-    }`;
-
     const [trendMovs, popTV, topR, animeData] = await Promise.all([
       tmdb('/trending/movie/week'),
+      // Non-anime TV: exclude animation genre (16)
       tmdb('/tv/popular'),
       tmdb('/movie/top_rated'),
-      anilist(POPULAR_ANIME_QUERY)
+      // Anime: Japanese-language TV with Animation genre (16)
+      tmdb('/discover/tv', {
+        with_original_language: 'ja',
+        with_genres: '16',
+        sort_by: 'popularity.desc',
+        page: 1
+      })
     ]);
 
     if (trendMovs.results?.[0]) setHero(trendMovs.results[0], 'movie');
 
     fillRow('trendingMovies', trendMovs.results || [], 'movie');
 
-    // Filter out anime from the Popular TV row so they don't appear twice
-    const nonAnimeTV = (popTV.results || []).filter(item => !tmdbItemIsAnime(item));
+    // Popular TV: filter out Japanese animation so it doesn't appear twice
+    const nonAnimeTV = (popTV.results || []).filter(item => {
+      const isJa    = item.original_language === 'ja';
+      const genreIds = item.genre_ids || [];
+      return !(isJa && genreIds.includes(16));
+    });
     fillRow('popularTV', nonAnimeTV, 'tv');
 
     fillRow('topRated', topR.results || [], 'movie');
 
-    // Anime row — always from AniList, always correct ids
-    const animeRow = document.getElementById('popularAnime');
-    animeRow.innerHTML = '';
-    (animeData?.Page?.media || []).forEach(m => animeRow.appendChild(makeAnimeCard(m)));
+    // Anime row — TMDB discover, routed as /tv
+    fillRow('popularAnime', animeData.results || [], 'tv');
   }
 
   // ── MOVIES TAB ──
@@ -1018,7 +925,7 @@
   }
 
   // ── TV TAB ──
-  // TV tab excludes anime (they belong in the Anime tab only)
+  // Excludes anime (Japanese animation) — those live in the Anime tab
   let tvPage = 1, activeTVGenre = null;
   const tvGenres = [
     { id: 10759, name: 'Action & Adventure' }, { id: 35, name: 'Comedy' },
@@ -1031,8 +938,7 @@
     const params = {
       page: tvPage,
       sort_by: 'popularity.desc',
-      // Exclude Animation genre (16) and Japanese-language shows to keep anime out of TV tab
-      without_genres: '16'
+      without_genres: '16'   // exclude Animation to keep anime out
     };
     if (activeTVGenre) params.with_genres = activeTVGenre;
     const data = await tmdb('/discover/tv', params);
@@ -1059,21 +965,18 @@
     loadTV(true);
   }
 
-  // ── ANIME TAB (always AniList) ──
+  // ── ANIME TAB ──
+  // Japanese-language Animation via TMDB /discover/tv, routed as type=tv
   let animePage = 1;
   async function loadAnime(reset = false) {
     if (reset) { animePage = 1; document.getElementById('animeGrid').innerHTML = ''; }
-    const query = `query($page: Int) {
-      Page(page: $page, perPage: 30) {
-        media(type: ANIME, sort: POPULARITY_DESC, status_not: NOT_YET_RELEASED) {
-          id title { english romaji } coverImage { large medium }
-          seasonYear averageScore episodes
-        }
-      }
-    }`;
-    const data = await anilist(query, { page: animePage });
-    const grid = document.getElementById('animeGrid');
-    (data?.Page?.media || []).forEach(m => grid.appendChild(makeAnimeCard(m)));
+    const data = await tmdb('/discover/tv', {
+      with_original_language: 'ja',
+      with_genres: '16',
+      sort_by: 'popularity.desc',
+      page: animePage
+    });
+    appendCards('animeGrid', data.results || [], 'tv');
   }
   function loadMoreAnime() { animePage++; loadAnime(); }
 
@@ -1094,27 +997,24 @@
   });
 
   async function doInlineSearch(q) {
-    const ANIME_Q = `query($s:String){Page(page:1,perPage:4){media(type:ANIME,search:$s){id title{english romaji} coverImage{medium} seasonYear averageScore}}}`;
-
-    const [tmdbData, animeData] = await Promise.all([
-      tmdb('/search/multi', { query: q, page: 1 }),
-      anilist(ANIME_Q, { s: q })
-    ]);
-
-    // TMDB results — exclude persons and items that look like anime
-    // (they'll appear via the AniList search instead)
-    const tmdbItems  = (tmdbData.results || [])
-      .filter(i => i.media_type !== 'person' && !tmdbItemIsAnime(i))
-      .slice(0, 5);
-    const animeItems = animeData?.Page?.media || [];
+    const data  = await tmdb('/search/multi', { query: q, page: 1 });
+    const items = (data.results || [])
+      .filter(i => i.media_type === 'movie' || i.media_type === 'tv')
+      .slice(0, 8);
 
     searchResults.innerHTML = '';
 
-    tmdbItems.forEach(item => {
+    if (!items.length) {
+      searchResults.innerHTML = '<div style="padding:16px;color:#555;font-size:13px">No results found</div>';
+      searchResults.classList.add('open');
+      return;
+    }
+
+    items.forEach(item => {
       const title  = item.title || item.name;
       const year   = (item.release_date || item.first_air_date || '').slice(0, 4);
       const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
-      const type   = item.media_type;
+      const type   = item.media_type; // 'movie' or 'tv'
       const div    = document.createElement('div');
       div.className = 'search-result-item';
       div.innerHTML = `
@@ -1128,25 +1028,6 @@
       searchResults.appendChild(div);
     });
 
-    // AniList anime — always correct ids
-    animeItems.forEach(media => {
-      const info = anilistToCard(media);
-      const div  = document.createElement('div');
-      div.className = 'search-result-item';
-      div.innerHTML = `
-        ${info.poster ? `<img src="${info.poster}" alt="${info.title}">` : `<div style="width:42px;height:60px;background:#222;border-radius:4px;flex-shrink:0"></div>`}
-        <div class="sri-info">
-          <div class="sri-title">${info.title}</div>
-          <div class="sri-meta">${info.year || '—'} · ⭐ ${info.score}</div>
-        </div>
-        <span class="sri-type anime">ANIME</span>`;
-      div.onclick = () => window.location.href = `watch.html?id=${info.id}&type=anime`;
-      searchResults.appendChild(div);
-    });
-
-    if (!tmdbItems.length && !animeItems.length) {
-      searchResults.innerHTML = '<div style="padding:16px;color:#555;font-size:13px">No results found</div>';
-    }
     searchResults.classList.add('open');
   }
 
@@ -1171,18 +1052,10 @@
     document.getElementById('fspQuery').textContent = `"${q}"`;
     document.getElementById('fspGrid').innerHTML = '<div style="color:#555;font-size:14px;grid-column:1/-1">Searching...</div>';
 
-    const ANIME_Q = `query($s:String){Page(page:1,perPage:10){media(type:ANIME,search:$s){id title{english romaji} coverImage{large medium} seasonYear averageScore}}}`;
+    const data  = await tmdb('/search/multi', { query: q, page: 1 });
+    const items = (data.results || []).filter(i => i.media_type === 'movie' || i.media_type === 'tv');
 
-    const [tmdbData, animeData] = await Promise.all([
-      tmdb('/search/multi', { query: q, page: 1 }),
-      anilist(ANIME_Q, { s: q })
-    ]);
-
-    // Exclude persons and TMDB anime duplicates
-    const tmdbItems  = (tmdbData.results || []).filter(i => i.media_type !== 'person' && !tmdbItemIsAnime(i));
-    const animeItems = (animeData?.Page?.media || []).map(m => anilistToCard(m));
-
-    buildFspGrid(tmdbItems, animeItems);
+    buildFspGrid(items);
   }
 
   function closeSearch() {
@@ -1190,14 +1063,19 @@
     document.body.style.overflow = '';
   }
 
-  function buildFspGrid(tmdbItems = [], animeItems = []) {
+  function buildFspGrid(items = []) {
     const grid = document.getElementById('fspGrid');
     grid.innerHTML = '';
 
-    tmdbItems.forEach(item => {
+    if (!items.length) {
+      grid.innerHTML = '<div style="color:#555;font-size:14px;grid-column:1/-1">No results found.</div>';
+      return;
+    }
+
+    items.forEach(item => {
       const title  = item.title || item.name;
       const poster = item.poster_path ? `${IMG}${item.poster_path}` : '';
-      const type   = item.media_type;
+      const type   = item.media_type; // 'movie' or 'tv'
       const div    = document.createElement('div');
       div.className = 'fsp-card';
       div.innerHTML = `
@@ -1208,23 +1086,6 @@
       div.onclick = () => watchTitle(item.id, type);
       grid.appendChild(div);
     });
-
-    // AniList anime results — correct ids, correct type
-    animeItems.forEach(info => {
-      const div = document.createElement('div');
-      div.className = 'fsp-card';
-      div.innerHTML = `
-        ${info.poster
-          ? `<img src="${info.poster}" alt="${info.title}" loading="lazy">`
-          : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;padding:10px;font-size:11px;color:#444;text-align:center">${info.title}</div>`}
-        <div class="fsp-card-label">${info.title}<br><span style="color:#c084fc;font-size:9px">🎌 ANIME</span></div>`;
-      div.onclick = () => window.location.href = `watch.html?id=${info.id}&type=anime`;
-      grid.appendChild(div);
-    });
-
-    if (!tmdbItems.length && !animeItems.length) {
-      grid.innerHTML = '<div style="color:#555;font-size:14px;grid-column:1/-1">No results found.</div>';
-    }
   }
 
   // ── TAB SWITCHING ──
@@ -1292,22 +1153,22 @@
       const row = document.getElementById('keepWatchingRow');
       row.innerHTML = '';
       history.forEach(item => {
-        const card    = document.createElement('div');
-        card.className = 'card';
-        const epLabel = item.media_type === 'tv' && item.season ? `S${item.season}E${item.episode}` : '';
-        card.innerHTML = `
+        // Normalise legacy 'anime' entries to 'tv' since we no longer have a separate anime type
+        const mediaType = item.media_type === 'anime' ? 'tv' : item.media_type;
+        const card      = document.createElement('div');
+        card.className  = 'card';
+        const epLabel   = mediaType === 'tv' && item.season ? `S${item.season}E${item.episode}` : '';
+        card.innerHTML  = `
           ${item.poster_path
             ? `<img src="https://image.tmdb.org/t/p/w342${item.poster_path}" alt="${item.title}" loading="lazy">`
             : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#444;text-align:center;padding:8px">${item.title}</div>`}
           <div class="card-overlay">
             <div class="card-play">▶</div>
             <div class="card-title">${item.title}</div>
-            <div class="card-year" style="color:var(--red)">${epLabel || (item.media_type === 'anime' ? '🎌' : 'Movie')}</div>
+            <div class="card-year" style="color:var(--red)">${epLabel || (mediaType === 'movie' ? '🎬' : '📺')}</div>
           </div>`;
         card.onclick = () => {
-          // History rows already store the correct type (anime/tv/movie) and correct id
-          // because watch.html now saves resolvedType + resolvedAnimeId
-          let url = `watch.html?id=${item.tmdb_id}&type=${item.media_type}`;
+          let url = `watch.html?id=${item.tmdb_id}&type=${mediaType}`;
           if (item.season) url += `&season=${item.season}&episode=${item.episode}`;
           window.location.href = url;
         };
