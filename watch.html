@@ -75,6 +75,27 @@
     .spinner { width:40px; height:40px; border:3px solid #1a1a1a; border-top-color:var(--red); border-radius:50%; animation:spin 0.8s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* INTRO */
+    .intro-video {
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover; z-index:10;
+      transition:opacity 0.8s ease;
+      cursor:pointer;
+    }
+    .intro-skip {
+      position:absolute; bottom:16px; right:16px; z-index:11;
+      background:rgba(0,0,0,0.6); border:1px solid #444; color:#ccc;
+      padding:6px 14px; border-radius:20px; font-size:12px;
+      cursor:pointer; font-family:"DM Sans",sans-serif;
+      transition:all 0.2s; backdrop-filter:blur(4px);
+    }
+    .intro-skip:hover { background:rgba(0,0,0,0.85); color:#fff; border-color:#888; }
+
+    /* INTRO */
+    .intro-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:10; transition:opacity 0.8s ease; cursor:pointer; }
+    .intro-skip { position:absolute; bottom:16px; right:16px; z-index:11; background:rgba(0,0,0,0.6); border:1px solid #444; color:#ccc; padding:6px 14px; border-radius:20px; font-size:12px; cursor:pointer; font-family:"DM Sans",sans-serif; transition:all 0.2s; backdrop-filter:blur(4px); }
+    .intro-skip:hover { background:rgba(0,0,0,0.85); color:#fff; border-color:#888; }
+
     @media (max-width:900px) { .content-grid { grid-template-columns:1fr; } .sidebar { display:none; } .content-title { font-size:36px; } }
     @media (max-width:768px) { .navbar { padding:0 12px; height:52px; } .player-wrap { position:sticky; top:52px; z-index:50; } .player-frame { max-height:none; } .content { padding:16px 14px 40px; } .content-title { font-size:26px; } .episode-grid { grid-template-columns:1fr; } }
     @media (max-width:400px) { .content-title { font-size:22px; } }
@@ -86,12 +107,16 @@
   <a href="index.html" class="back-btn">&larr; Back</a>
   <img src="logo.png" alt="Streamglobe" class="logo" />
   <div class="nav-title" id="navTitle"><span>Loading...</span></div>
-  <div class="nav-avatar" onclick="window.location.href='profile.html'" title="Profile">
+  <div class="nav-avatar" id="navAvatar" onclick="window.location.href='profile.html'" title="Profile">
     <img id="navAvatarImg" src="" alt="Profile" />
   </div>
 </nav>
 
-<div class="player-wrap">
+<div class="player-wrap" style="position:relative;">
+  <video id="introVideo" class="intro-video"
+    src="roller.mp4" autoplay playsinline>
+  </video>
+  <button class="intro-skip" id="introSkip">Skip Intro &#9654;</button>
   <iframe id="playerFrame" class="player-frame" allowfullscreen allow="autoplay; fullscreen *"></iframe>
 </div>
 
@@ -122,25 +147,24 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const SUPABASE_URL = 'https://rkavxcoabijokzkeqbvm.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_5XohGQpLBO5ACHVl6iUaqg_o4z4X-Pi';
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+  const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const IMG = 'https://image.tmdb.org/t/p/w342';
+  const IMG      = 'https://image.tmdb.org/t/p/w342';
+  const DICEBEAR = 'https://api.dicebear.com/9.x/notionists-neutral/svg?seed=';
 
   const params    = new URLSearchParams(location.search);
-  const mediaId   = params.get('id');           // AniList id when type=anime, TMDB id otherwise
-  const mediaType = params.get('type') || 'movie'; // 'anime' | 'tv' | 'movie'
+  const mediaId   = params.get('id');
+  const mediaType = params.get('type') || 'movie';
   let curSeason   = parseInt(params.get('season')  || '1');
   let curEpisode  = parseInt(params.get('episode') || '1');
-
-  // ── API helpers ──────────────────────────────────────────────────────────────
 
   async function tmdb(endpoint, p) {
     p = p || {};
     const url = new URL('/api/tmdb', location.origin);
     url.searchParams.set('endpoint', endpoint);
-    Object.entries(p).forEach(([k, v]) => url.searchParams.set(k, v));
+    Object.entries(p).forEach(function(e) { url.searchParams.set(e[0], e[1]); });
     return (await fetch(url)).json();
   }
 
@@ -149,161 +173,154 @@
     const r = await fetch('/api/anilist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables })
+      body: JSON.stringify({ query: query, variables: variables })
     });
     return (await r.json()).data;
   }
 
-  // ── Player ───────────────────────────────────────────────────────────────────
-  // anime  → /anime/{anilistId}/{episode}/{season}   (id = AniList id)
-  // tv     → /tv/{tmdbId}/{season}/{episode}         (id = TMDB id)
-  // movie  → /movie/{tmdbId}                         (id = TMDB id)
-
   function buildPlayerUrl(id, type, season, episode) {
-    const base  = 'https://player.videasy.net';
-    const flags = '?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=ff0000';
-    if (type === 'movie') return `${base}/movie/${id}${flags}`;
-    if (type === 'anime') return `${base}/anime/${id}/${episode || 1}/${season || 1}${flags}`;
-    return `${base}/tv/${id}/${season}/${episode}${flags}`;
+    var base  = 'https://player.videasy.net';
+    var flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000';
+    if (type === 'movie') return base + '/movie/' + id + flags;
+    if (type === 'anime') return base + '/anime/' + id + '/' + (episode||1) + '/' + (season||1) + flags;
+    return base + '/tv/' + id + '/' + season + '/' + episode + flags;
   }
 
   function loadPlayer(season, episode) {
     document.getElementById('playerFrame').src = buildPlayerUrl(mediaId, mediaType, season, episode);
     curSeason  = season;
     curEpisode = episode;
-    document.querySelectorAll('.ep-card').forEach(c => c.classList.remove('active'));
-    const act = document.querySelector(`.ep-card[data-ep="${episode}"]`);
-    if (act) { act.classList.add('active'); act.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-    sb.auth.getSession().then(({ data: { session } }) => {
+    document.querySelectorAll('.ep-card').forEach(function(c) { c.classList.remove('active'); });
+    var act = document.querySelector('.ep-card[data-ep="' + episode + '"]');
+    if (act) { act.classList.add('active'); act.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+    sb.auth.getSession().then(function(res) {
+      var session = res.data && res.data.session;
       if (!session) return;
       sb.from('watch_history').upsert({
-        user_id:     session.user.id,
-        tmdb_id:     parseInt(mediaId),  // AniList id for anime
-        media_type:  mediaType,
-        title:       document.getElementById('contentTitle').textContent || 'Unknown',
+        user_id: session.user.id, tmdb_id: parseInt(mediaId), media_type: mediaType,
+        title: document.getElementById('contentTitle').textContent || 'Unknown',
         poster_path: null,
-        season:      mediaType === 'tv' ? season : null,
-        episode,
-        watched_at:  new Date().toISOString()
+        season: mediaType === 'tv' ? season : null,
+        episode: episode, watched_at: new Date().toISOString()
       }, { onConflict: 'user_id,tmdb_id,media_type' });
     });
   }
 
-  // ── TV season loader (TMDB only) ─────────────────────────────────────────────
-
   async function loadSeason(num) {
     curSeason = num;
-    document.querySelectorAll('.season-btn').forEach(b => {
+    document.querySelectorAll('.season-btn').forEach(function(b) {
       b.classList.toggle('active', parseInt(b.dataset.s) === num);
     });
-    const data = await tmdb(`/tv/${mediaId}/season/${num}`);
-    const grid = document.getElementById('episodeGrid');
+    var data = await tmdb('/tv/' + mediaId + '/season/' + num);
+    var grid = document.getElementById('episodeGrid');
     grid.innerHTML = '';
-    (data.episodes || []).forEach(ep => {
-      const div = document.createElement('div');
-      div.className  = `ep-card${ep.episode_number === curEpisode && num === curSeason ? ' active' : ''}`;
+    (data.episodes || []).forEach(function(ep) {
+      var div = document.createElement('div');
+      div.className  = 'ep-card' + (ep.episode_number === curEpisode && num === curSeason ? ' active' : '');
       div.dataset.ep = ep.episode_number;
-      div.innerHTML  = `
-        <div class="ep-num">${String(ep.episode_number).padStart(2,'0')}</div>
-        <div class="ep-info">
-          <div class="ep-title">${ep.name || 'Episode ' + ep.episode_number}</div>
-          <div class="ep-meta">${ep.air_date || ''}${ep.runtime ? ' · ' + ep.runtime + 'm' : ''}</div>
-        </div>
-        <div class="ep-play">&#9654;</div>`;
-      div.onclick = () => loadPlayer(num, ep.episode_number);
+      div.innerHTML  =
+        '<div class="ep-num">' + String(ep.episode_number).padStart(2,'0') + '</div>' +
+        '<div class="ep-info"><div class="ep-title">' + (ep.name || 'Episode ' + ep.episode_number) + '</div>' +
+        '<div class="ep-meta">' + (ep.air_date || '') + (ep.runtime ? ' · ' + ep.runtime + 'm' : '') + '</div></div>' +
+        '<div class="ep-play">&#9654;</div>';
+      div.onclick = (function(n, e) { return function() { loadPlayer(n, e); }; })(num, ep.episode_number);
       grid.appendChild(div);
     });
   }
-
-  // ── Init ─────────────────────────────────────────────────────────────────────
 
   async function init() {
     if (!mediaId) {
       document.getElementById('loadingState').innerHTML = '<div style="color:#555">No title specified.</div>';
       return;
     }
-    // By the time we arrive here, index.html has already resolved any anime to an
-    // AniList id and set type=anime. So we can trust the URL params completely.
     loadPlayer(curSeason, curEpisode);
     if (mediaType === 'anime') await initAnime();
-    else                       await initTMDB();
+    else await initTMDB();
   }
 
-  // ── Anime — AniList id in mediaId ───────────────────────────────────────────
-
   async function initAnime() {
-    const q = `query($id:Int){Media(id:$id,type:ANIME){
-      id title{english romaji} description episodes averageScore seasonYear status genres
-      coverImage{large medium}
-      recommendations(perPage:8){nodes{mediaRecommendation{
-        id title{english romaji} coverImage{medium} averageScore seasonYear
-      }}}
-    }}`;
-    const data  = await anilistFetch(q, { id: parseInt(mediaId) });
-    const media = data && data.Media;
+    var q = 'query($id:Int){Media(id:$id,type:ANIME){id title{english romaji} description episodes averageScore seasonYear status genres coverImage{large medium} recommendations(perPage:8){nodes{mediaRecommendation{id title{english romaji} coverImage{medium} averageScore seasonYear}}}}}';
+    var data  = await anilistFetch(q, { id: parseInt(mediaId) });
+    var media = data && data.Media;
     if (!media) {
       document.getElementById('loadingState').innerHTML = '<div style="color:#555">Anime not found.</div>';
       return;
     }
 
-    const title    = (media.title && (media.title.english || media.title.romaji)) || 'Unknown';
-    const year     = media.seasonYear || '';
-    const rating   = media.averageScore ? (media.averageScore / 10).toFixed(1) : 'N/A';
-    const episodes = media.episodes || 0;
-    const desc     = (media.description || '').replace(/<[^>]*>/g, '').slice(0, 300);
+    var title    = (media.title && (media.title.english || media.title.romaji)) || 'Unknown';
+    var year     = media.seasonYear || '';
+    var rating   = media.averageScore ? (media.averageScore / 10).toFixed(1) : 'N/A';
+    var episodes = media.episodes || 0;
+    var desc     = (media.description || '').replace(/<[^>]*>/g, '').slice(0, 300);
 
-    document.title = `${title} - Streamglobe`;
-    document.getElementById('navTitle').innerHTML       = `<span>${title}</span>`;
+    document.title = title + ' - Streamglobe';
+    document.getElementById('navTitle').innerHTML       = '<span>' + title + '</span>';
     document.getElementById('typeBadge').className      = 'type-badge anime';
     document.getElementById('typeBadge').textContent    = 'Anime';
     document.getElementById('contentTitle').textContent = title;
     document.getElementById('overview').textContent     = desc || 'No description available.';
     document.getElementById('metaRow').innerHTML =
-      `<span class="meta-pill highlight">&#11088; ${rating}</span>` +
-      (year     ? `<span class="meta-pill">${year}</span>` : '') +
-      (episodes ? `<span class="meta-pill">${episodes} Episodes</span>` : '') +
-      (media.status ? `<span class="meta-pill">${media.status.replace(/_/g,' ')}</span>` : '');
+      '<span class="meta-pill highlight">&#11088; ' + rating + '</span>' +
+      (year     ? '<span class="meta-pill">' + year + '</span>' : '') +
+      (episodes ? '<span class="meta-pill">' + episodes + ' Episodes</span>' : '') +
+      (media.status ? '<span class="meta-pill">' + media.status.replace(/_/g, ' ') + '</span>' : '');
     document.getElementById('genresList').innerHTML =
-      (media.genres || []).map(g => `<span class="genre-tag">${g}</span>`).join('');
+      (media.genres || []).map(function(g) { return '<span class="genre-tag">' + g + '</span>'; }).join('');
 
     if (episodes > 0) {
       document.getElementById('episodeSection').style.display = 'block';
-      const maxS     = Math.max(1, Math.ceil(episodes / 13));
-      const selector = document.getElementById('seasonSelector');
+      var maxS     = Math.max(1, Math.ceil(episodes / 13));
+      var selector = document.getElementById('seasonSelector');
       selector.innerHTML = '';
-      for (let s = 1; s <= Math.max(maxS, curSeason); s++) {
-        const btn = document.createElement('button');
-        btn.className   = `season-btn${s === curSeason ? ' active' : ''}`;
-        btn.textContent = `Season ${s}`;
-        btn.dataset.s   = s;
-        btn.onclick     = () => {
-          curSeason = s;
-          document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          loadPlayer(s, 1);
-          renderAnimeEpisodes(episodes, s);
-        };
-        selector.appendChild(btn);
+      for (var s = 1; s <= Math.max(maxS, curSeason); s++) {
+        (function(sn) {
+          var btn = document.createElement('button');
+          btn.className   = 'season-btn' + (sn === curSeason ? ' active' : '');
+          btn.textContent = 'Season ' + sn;
+          btn.dataset.s   = sn;
+          btn.onclick = function() {
+            curSeason = sn;
+            document.querySelectorAll('.season-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            loadPlayer(sn, 1);
+          };
+          selector.appendChild(btn);
+        })(s);
       }
-      renderAnimeEpisodes(episodes, curSeason);
+      var grid = document.getElementById('episodeGrid');
+      grid.innerHTML = '';
+      for (var ep = 1; ep <= episodes; ep++) {
+        (function(epn) {
+          var div = document.createElement('div');
+          div.className  = 'ep-card' + (epn === curEpisode ? ' active' : '');
+          div.dataset.ep = epn;
+          div.innerHTML  =
+            '<div class="ep-num">' + String(epn).padStart(2, '0') + '</div>' +
+            '<div class="ep-info"><div class="ep-title">Episode ' + epn + '</div></div>' +
+            '<div class="ep-play">&#9654;</div>';
+          div.onclick = function() { loadPlayer(curSeason, epn); };
+          grid.appendChild(div);
+        })(ep);
+      }
+      var ae = grid.querySelector('.active');
+      if (ae) ae.scrollIntoView({ block: 'nearest' });
     }
 
-    const simList = document.getElementById('similarList');
+    var simList = document.getElementById('similarList');
     simList.innerHTML = '';
-    ((media.recommendations && media.recommendations.nodes) || []).forEach(node => {
-      const rec = node && node.mediaRecommendation;
+    var nodes = (media.recommendations && media.recommendations.nodes) || [];
+    nodes.forEach(function(node) {
+      var rec = node && node.mediaRecommendation;
       if (!rec) return;
-      const t = (rec.title && (rec.title.english || rec.title.romaji)) || 'Unknown';
-      const p = (rec.coverImage && rec.coverImage.medium) || '';
-      const d = document.createElement('div');
+      var t = (rec.title && (rec.title.english || rec.title.romaji)) || 'Unknown';
+      var p = (rec.coverImage && rec.coverImage.medium) || '';
+      var d = document.createElement('div');
       d.className = 'similar-card';
-      d.innerHTML = `
-        ${p ? `<img src="${p}" alt="${t}">` : `<div style="width:60px;height:85px;background:#1a1a1a;border-radius:5px;flex-shrink:0"></div>`}
-        <div>
-          <div class="sc-title">${t}</div>
-          <div class="sc-meta">&#11088; ${rec.averageScore ? (rec.averageScore/10).toFixed(1) : 'N/A'} &middot; ${rec.seasonYear || ''}</div>
-        </div>`;
-      d.onclick = () => window.location.href = `watch.html?id=${rec.id}&type=anime`;
+      d.innerHTML =
+        (p ? '<img src="' + p + '" alt="' + t + '">' : '<div style="width:60px;height:85px;background:#1a1a1a;border-radius:5px;flex-shrink:0"></div>') +
+        '<div><div class="sc-title">' + t + '</div><div class="sc-meta">&#11088; ' +
+        (rec.averageScore ? (rec.averageScore / 10).toFixed(1) : 'N/A') + ' &middot; ' + (rec.seasonYear || '') + '</div></div>';
+      d.onclick = (function(id) { return function() { window.location.href = 'watch.html?id=' + id + '&type=anime'; }; })(rec.id);
       simList.appendChild(d);
     });
 
@@ -312,133 +329,126 @@
     document.getElementById('contentGrid').style.display  = 'grid';
   }
 
-  // Render episode list for anime, chunked into groups of 13 per "season" button
-  function renderAnimeEpisodes(totalEpisodes, season) {
-    const start = (season - 1) * 13 + 1;
-    const end   = Math.min(season * 13, totalEpisodes);
-    const grid  = document.getElementById('episodeGrid');
-    grid.innerHTML = '';
-    for (let ep = start; ep <= end; ep++) {
-      const localNum = ep - (season - 1) * 13;
-      const div = document.createElement('div');
-      div.className  = `ep-card${ep === curEpisode ? ' active' : ''}`;
-      div.dataset.ep = ep;
-      div.innerHTML  = `
-        <div class="ep-num">${String(localNum).padStart(2,'0')}</div>
-        <div class="ep-info"><div class="ep-title">Episode ${ep}</div></div>
-        <div class="ep-play">&#9654;</div>`;
-      div.onclick = () => loadPlayer(season, ep);
-      grid.appendChild(div);
-    }
-    grid.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
-  }
-
-  // ── TMDB — movie / tv ────────────────────────────────────────────────────────
-
   async function initTMDB() {
-    const [details, similar] = await Promise.all([
-      tmdb(`/${mediaType}/${mediaId}`, { append_to_response: 'content_ratings' }),
-      tmdb(`/${mediaType}/${mediaId}/similar`)
+    var results = await Promise.all([
+      tmdb('/' + mediaType + '/' + mediaId, { append_to_response: 'content_ratings' }),
+      tmdb('/' + mediaType + '/' + mediaId + '/similar')
     ]);
+    var details = results[0];
+    var similar = results[1];
 
     if (!details || details.success === false) {
       document.getElementById('loadingState').innerHTML = '<div style="color:#555">Title not found.</div>';
       return;
     }
 
-    const title   = details.title || details.name || 'Unknown';
-    const year    = (details.release_date || details.first_air_date || '').slice(0, 4);
-    const rating  = details.vote_average ? details.vote_average.toFixed(1) : 'N/A';
-    const runtime = details.runtime
-      ? `${details.runtime}m`
-      : (details.episode_run_time && details.episode_run_time[0] ? `${details.episode_run_time[0]}m/ep` : null);
+    var title   = details.title || details.name || 'Unknown';
+    var year    = (details.release_date || details.first_air_date || '').slice(0, 4);
+    var rating  = details.vote_average ? details.vote_average.toFixed(1) : 'N/A';
+    var runtime = details.runtime ? details.runtime + 'm'
+                : (details.episode_run_time && details.episode_run_time[0] ? details.episode_run_time[0] + 'm/ep' : null);
 
-    document.title = `${title} - Streamglobe`;
-    document.getElementById('navTitle').innerHTML       = `<span>${title}</span>`;
-    document.getElementById('typeBadge').className      = `type-badge ${mediaType}`;
+    document.title = title + ' - Streamglobe';
+    document.getElementById('navTitle').innerHTML       = '<span>' + title + '</span>';
+    document.getElementById('typeBadge').className      = 'type-badge ' + mediaType;
     document.getElementById('typeBadge').textContent    = mediaType === 'movie' ? 'Movie' : 'TV Series';
     document.getElementById('contentTitle').textContent = title;
     document.getElementById('overview').textContent     = details.overview || 'No description available.';
-    document.getElementById('metaRow').innerHTML = [
-      `<span class="meta-pill highlight">&#11088; ${rating}</span>`,
-      year    ? `<span class="meta-pill">${year}</span>` : '',
-      runtime ? `<span class="meta-pill">${runtime}</span>` : '',
-      details.status ? `<span class="meta-pill">${details.status}</span>` : '',
-      details.number_of_seasons
-        ? `<span class="meta-pill">${details.number_of_seasons} Season${details.number_of_seasons > 1 ? 's' : ''}</span>`
-        : ''
+
+    var meta = [
+      '<span class="meta-pill highlight">&#11088; ' + rating + '</span>',
+      year    ? '<span class="meta-pill">' + year + '</span>' : '',
+      runtime ? '<span class="meta-pill">' + runtime + '</span>' : '',
+      details.status ? '<span class="meta-pill">' + details.status + '</span>' : '',
+      details.number_of_seasons ? '<span class="meta-pill">' + details.number_of_seasons + ' Season' + (details.number_of_seasons > 1 ? 's' : '') + '</span>' : ''
     ].filter(Boolean).join('');
+    document.getElementById('metaRow').innerHTML    = meta;
     document.getElementById('genresList').innerHTML =
-      (details.genres || []).map(g => `<span class="genre-tag">${g.name}</span>`).join('');
+      (details.genres || []).map(function(g) { return '<span class="genre-tag">' + g.name + '</span>'; }).join('');
 
     if (mediaType === 'tv') {
       document.getElementById('episodeSection').style.display = 'block';
-      const seasons  = (details.seasons || []).filter(s => s.season_number > 0);
-      const selector = document.getElementById('seasonSelector');
+      var seasons  = (details.seasons || []).filter(function(s) { return s.season_number > 0; });
+      var selector = document.getElementById('seasonSelector');
       selector.innerHTML = '';
-      seasons.forEach(s => {
-        const btn = document.createElement('button');
-        btn.className   = `season-btn${s.season_number === curSeason ? ' active' : ''}`;
-        btn.textContent = `Season ${s.season_number}`;
+      seasons.forEach(function(s) {
+        var btn = document.createElement('button');
+        btn.className   = 'season-btn' + (s.season_number === curSeason ? ' active' : '');
+        btn.textContent = 'Season ' + s.season_number;
         btn.dataset.s   = s.season_number;
-        btn.onclick     = () => loadSeason(s.season_number);
+        btn.onclick = (function(sn) { return function() { loadSeason(sn); }; })(s.season_number);
         selector.appendChild(btn);
       });
       await loadSeason(curSeason);
     }
 
-    const simList = document.getElementById('similarList');
+    var simList = document.getElementById('similarList');
     simList.innerHTML = '';
-    (similar.results || []).slice(0, 8).forEach(item => {
-      const t = item.title || item.name;
-      const y = (item.release_date || item.first_air_date || '').slice(0, 4);
-      const p = item.poster_path ? `${IMG}${item.poster_path}` : '';
-      const d = document.createElement('div');
+    (similar.results || []).slice(0, 8).forEach(function(item) {
+      var t = item.title || item.name;
+      var y = (item.release_date || item.first_air_date || '').slice(0, 4);
+      var p = item.poster_path ? IMG + item.poster_path : '';
+      var d = document.createElement('div');
       d.className = 'similar-card';
-      d.innerHTML = `
-        ${p ? `<img src="${p}" alt="${t}">` : `<div style="width:60px;height:85px;background:#1a1a1a;border-radius:5px;flex-shrink:0"></div>`}
-        <div>
-          <div class="sc-title">${t}</div>
-          <div class="sc-meta">&#11088; ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'} &middot; ${y}</div>
-        </div>`;
-      d.onclick = () => window.location.href = `watch.html?id=${item.id}&type=${mediaType}`;
+      d.innerHTML =
+        (p ? '<img src="' + p + '" alt="' + t + '">' : '<div style="width:60px;height:85px;background:#1a1a1a;border-radius:5px;flex-shrink:0"></div>') +
+        '<div><div class="sc-title">' + t + '</div><div class="sc-meta">&#11088; ' +
+        (item.vote_average ? item.vote_average.toFixed(1) : 'N/A') + ' &middot; ' + y + '</div></div>';
+      d.onclick = (function(id) { return function() { window.location.href = 'watch.html?id=' + id + '&type=' + mediaType; }; })(item.id);
       simList.appendChild(d);
     });
 
     await saveHistory(title, details.poster_path || null,
-      mediaType === 'tv' ? curSeason  : null,
+      mediaType === 'tv' ? curSeason : null,
       mediaType === 'tv' ? curEpisode : null);
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('contentGrid').style.display  = 'grid';
   }
 
-  // ── History ──────────────────────────────────────────────────────────────────
-
   async function saveHistory(title, poster, season, episode) {
-    const { data: { session } } = await sb.auth.getSession();
+    var res = await sb.auth.getSession();
+    var session = res.data && res.data.session;
     if (!session) return;
     await sb.from('watch_history').upsert({
-      user_id:     session.user.id,
-      tmdb_id:     parseInt(mediaId),  // AniList id stored here for anime
-      media_type:  mediaType,
-      title,
-      poster_path: poster,
-      season,
-      episode,
-      watched_at:  new Date().toISOString()
+      user_id: session.user.id, tmdb_id: parseInt(mediaId),
+      media_type: mediaType, title: title, poster_path: poster,
+      season: season, episode: episode, watched_at: new Date().toISOString()
     }, { onConflict: 'user_id,tmdb_id,media_type' });
   }
 
   // Load avatar
-  sb.auth.getSession().then(({ data: { session } }) => {
+  sb.auth.getSession().then(function(res) {
+    var session = res.data && res.data.session;
     if (!session) return;
-    sb.from('profiles').select('avatar_id').eq('id', session.user.id).single().then(({ data }) => {
-      if (data && data.avatar_id) {
-        document.getElementById('navAvatarImg').src =
-          `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${data.avatar_id}`;
+    sb.from('profiles').select('avatar_id').eq('id', session.user.id).single().then(function(r) {
+      if (r.data && r.data.avatar_id) {
+        var img = document.getElementById('navAvatarImg');
+        img.src = 'https://api.dicebear.com/9.x/notionists-neutral/svg?seed=' + r.data.avatar_id;
       }
     });
   });
+
+  // ── INTRO ──
+  (function() {
+    var vid  = document.getElementById('introVideo');
+    var skip = document.getElementById('introSkip');
+    if (!vid) return;
+
+    function dismissIntro() {
+      vid.style.opacity  = '0';
+      skip.style.opacity = '0';
+      skip.style.pointerEvents = 'none';
+      setTimeout(function() {
+        vid.remove();
+        skip.remove();
+      }, 800);
+    }
+
+    vid.addEventListener('ended', dismissIntro);
+    vid.addEventListener('error', dismissIntro);
+    skip.addEventListener('click', dismissIntro);
+    vid.addEventListener('click', dismissIntro);
+  })();
 
   init();
 </script>
