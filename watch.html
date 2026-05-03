@@ -179,7 +179,7 @@
   }
 
   function buildPlayerUrl(id, type, season, episode) {
-    var base  = 'https://player.videasy.net';
+    var base  = 'https://vidcore.net';
     var flags = '?nextButton=true&autoPlay=true&sub=en&chromecast=false&theme=ff0000&nextEpisode=true&overlay=true&episodeSelector=true';
     if (type === 'movie') return base + '/movie/' + id + flags;
     if (type === 'anime') return base + '/anime/' + id + '/' + (episode||1) + '/' + (season||1) + flags;
