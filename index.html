@@ -904,19 +904,31 @@ function closeFsp() {
 let tabsLoaded={home:true,movies:false,tv:false,anime:false};
 
 function switchTab(name) {
-  document.querySelectorAll('.nav-tab,.bn-item[data-tab]').forEach(function(t){
-    if(t.dataset.tab) t.classList.toggle('active', t.dataset.tab===name);
+  // Nav tabs (desktop)
+  document.querySelectorAll('.nav-tab[data-tab]').forEach(function(t){
+    t.classList.toggle('active', t.dataset.tab === name);
   });
+  // Bottom nav (mobile)
+  document.querySelectorAll('.bn-item[data-tab]').forEach(function(t){
+    t.classList.toggle('active', t.dataset.tab === name);
+  });
+  // Tab content
   document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
-  const tc=document.getElementById('tab-'+name); if(tc) tc.classList.add('active');
-  window.scrollTo({top:0,behavior:'smooth'});
-  if(!tabsLoaded[name]){
-    tabsLoaded[name]=true;
-    if(name==='movies'){buildGenreFilters();loadMovies();}
-    if(name==='tv'){buildGenreFilters();loadTV();}
-    if(name==='anime') loadAnime();
+  const tc = document.getElementById('tab-'+name);
+  if (tc) tc.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+  if (!tabsLoaded[name]) {
+    tabsLoaded[name] = true;
+    if (name==='movies') { buildGenreFilters(); loadMovies(); }
+    if (name==='tv')     { buildGenreFilters(); loadTV(); }
+    if (name==='anime')  { loadAnime(); }
   }
 }
+
+// ── NAV TAB click listeners ──
+document.querySelectorAll('.nav-tab[data-tab]').forEach(function(btn) {
+  btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+});
 
 // ── TV keyboard navigation ──
 document.addEventListener('keydown', function(e) {

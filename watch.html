@@ -321,9 +321,17 @@ async function buildPlayerUrl(tmdbId, type, season, episode, aniEp) {
   }
 
   // Get IMDB ID for movies and TV
-  const imdbId = await getImdbId(tmdbId, type === 'tv' ? 'tv' : 'movie');
+  let imdbId = await getImdbId(tmdbId, type === 'tv' ? 'tv' : 'movie');
+  // Some titles don't have IMDB IDs in TMDB — retry once then fall back gracefully
   if (!imdbId) {
-    // Fallback to TMDB id style if no IMDB id found
+    try {
+      const retry = await (await fetch(new URL('/api/tmdb?endpoint=/'+( type==='tv'?'tv':'movie')+'/'+tmdbId+'/external_ids', location.origin))).json();
+      imdbId = retry.imdb_id || null;
+      if (imdbId) imdbCache[type+':'+tmdbId] = imdbId;
+    } catch(e) {}
+  }
+  if (!imdbId) {
+    // Final fallback: use TMDB id directly (vidcore may still resolve it)
     if (type === 'movie') return base + '/movie/' + tmdbId + flags;
     return base + '/tv/' + tmdbId + '/' + season + '/' + episode + flags;
   }
@@ -390,13 +398,23 @@ async function init() {
     return;
   }
 
-  // Start player load immediately (don't wait for metadata)
-  buildPlayerUrl(mediaId, mediaType, curSeason, curEpisode).then(function(url) {
-    document.getElementById('playerFrame').src = url;
-  });
-
-  if (mediaType === 'anime') await initAnime();
-  else await initTMDB();
+  // Fetch IMDB id first so player URL is correct, then load both in parallel
+  if (mediaType === 'anime') {
+    // Anime uses AniList id directly, no IMDB lookup needed — load immediately
+    buildPlayerUrl(mediaId, 'anime', curSeason, curEpisode).then(function(url) {
+      document.getElementById('playerFrame').src = url;
+    });
+    await initAnime();
+  } else {
+    // Pre-fetch IMDB id, then kick off player + metadata simultaneously
+    getImdbId(mediaId, mediaType === 'tv' ? 'tv' : 'movie').then(function() {
+      // IMDB id now cached — build correct URL immediately
+      buildPlayerUrl(mediaId, mediaType, curSeason, curEpisode).then(function(url) {
+        document.getElementById('playerFrame').src = url;
+      });
+    });
+    await initTMDB();
+  }
 }
 
 async function initAnime() {
