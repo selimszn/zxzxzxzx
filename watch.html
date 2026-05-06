@@ -317,7 +317,7 @@ async function buildPlayerUrl(tmdbId, type, season, episode, aniEp) {
 
   if (type === 'anime') {
     // AniList ID passed directly, use episode number
-    return base + '/anime/' + tmdbId + '/' + (aniEp||episode||1) + '/' + (season||1) + flags;
+    return base + '/tv/' + tmdbId + '/' + (aniEp||episode||1) + '/' + (season||1) + flags;
   }
 
   // Get IMDB ID for movies and TV
