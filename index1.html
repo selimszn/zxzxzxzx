@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VidCore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --fg: #f0ede8;
+      --muted: #3a3a3a;
+      --subtle: #1e1e1e;
+      --accent: #f0ede8;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      overflow: hidden;
+    }
+
+    /* ── SEARCH VIEW ── */
+    #view-search {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem;
+      transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+      z-index: 10;
+    }
+    #view-search.hidden {
+      opacity: 0;
+      transform: translateY(-18px);
+      pointer-events: none;
+    }
+
+    .wordmark {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      letter-spacing: -0.02em;
+      color: var(--fg);
+      margin-bottom: 2.8rem;
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.1s forwards;
+    }
+
+    .search-box {
+      width: 100%; max-width: 520px;
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.2s forwards;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    #search-input {
+      width: 100%;
+      background: var(--subtle);
+      border: 1px solid #282828;
+      border-radius: 6px;
+      color: var(--fg);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      font-size: 1rem;
+      padding: 0.85rem 1.1rem;
+      outline: none;
+      transition: border-color 0.2s;
+      caret-color: var(--fg);
+    }
+    #search-input::placeholder { color: var(--muted); }
+    #search-input:focus { border-color: #444; }
+
+    #results {
+      width: 100%; max-width: 520px;
+      margin-top: 0.5rem;
+      background: var(--subtle);
+      border: 1px solid #282828;
+      border-radius: 6px;
+      overflow: hidden;
+      opacity: 0;
+      max-height: 0;
+      transition: max-height 0.35s var(--ease), opacity 0.3s var(--ease);
+    }
+    #results.open {
+      opacity: 1;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    #results::-webkit-scrollbar { width: 3px; }
+    #results::-webkit-scrollbar-track { background: transparent; }
+    #results::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+    .result-item {
+      display: flex; align-items: center; gap: 0.9rem;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid #1a1a1a;
+      transition: background 0.15s;
+    }
+    .result-item:last-child { border-bottom: none; }
+    .result-item:hover { background: #242424; }
+
+    .result-thumb {
+      width: 32px; height: 46px;
+      object-fit: cover;
+      border-radius: 3px;
+      flex-shrink: 0;
+      filter: grayscale(0.4);
+      background: #181818;
+    }
+    .result-thumb.empty {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.55rem; color: #2a2a2a;
+      border: 1px solid #222;
+    }
+
+    .result-info { flex: 1; min-width: 0; }
+    .result-title {
+      font-size: 0.875rem;
+      font-weight: 400;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .result-sub {
+      font-size: 0.7rem; color: var(--muted);
+      margin-top: 0.15rem;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .badge {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid #2a2a2a;
+      border-radius: 3px;
+      padding: 0.15rem 0.4rem;
+      flex-shrink: 0;
+    }
+
+    #search-status {
+      margin-top: 0.6rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      min-height: 1rem;
+      text-align: center;
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.3s forwards;
+    }
+
+    /* ── PLAYER VIEW ── */
+    #view-player {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      opacity: 0;
+      transform: translateY(18px);
+      pointer-events: none;
+      transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+      z-index: 5;
+      padding: 2rem;
+    }
+    #view-player.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    .player-back {
+      position: absolute;
+      top: 2rem; left: 2rem;
+      background: none; border: none;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0;
+      transition: color 0.2s;
+    }
+    .player-back:hover { color: var(--fg); }
+    .player-back svg { width: 14px; height: 14px; }
+
+    .player-title {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      letter-spacing: -0.01em;
+      margin-bottom: 1.2rem;
+      text-align: center;
+      max-width: 640px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .player-shell {
+      width: 100%;
+      max-width: 880px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px #1e1e1e, 0 40px 80px rgba(0,0,0,0.8);
+    }
+
+    #player-frame {
+      width: 100%; height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SEARCH VIEW -->
+  <div id="view-search">
+    <div class="wordmark">vidcore.</div>
+    <div class="search-box">
+      <div class="input-wrap">
+        <input id="search-input" type="text" placeholder="Search movies or TV series…" autocomplete="off" spellcheck="false" />
+      </div>
+      <div id="results"></div>
+    </div>
+    <div id="search-status"></div>
+  </div>
+
+  <!-- PLAYER VIEW -->
+  <div id="view-player">
+    <button class="player-back" id="back-btn">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M10 3L5 8l5 5"/>
+      </svg>
+      Back
+    </button>
+    <div class="player-title" id="player-title"></div>
+    <div class="player-shell">
+      <iframe id="player-frame" allowfullscreen allow="autoplay; fullscreen"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('search-input');
+    const resultsEl   = document.getElementById('results');
+    const statusEl    = document.getElementById('search-status');
+    const viewSearch  = document.getElementById('view-search');
+    const viewPlayer  = document.getElementById('view-player');
+    const playerFrame = document.getElementById('player-frame');
+    const playerTitle = document.getElementById('player-title');
+    const backBtn     = document.getElementById('back-btn');
+
+    let debounce;
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounce);
+      const q = searchInput.value.trim();
+      if (!q) { closeResults(); statusEl.textContent = ''; return; }
+      debounce = setTimeout(() => doSearch(q), 380);
+    });
+
+    async function doSearch(q) {
+      statusEl.textContent = 'Searching…';
+      closeResults();
+      try {
+        const res  = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=trilogy`);
+        const data = await res.json();
+        if (data.Response === 'False' || !data.Search) {
+          statusEl.textContent = 'No results found.';
+          return;
+        }
+        statusEl.textContent = '';
+        renderResults(data.Search);
+      } catch {
+        statusEl.textContent = 'Something went wrong.';
+      }
+    }
+
+    function renderResults(items) {
+      resultsEl.innerHTML = '';
+      items.forEach(item => {
+        const type = item.Type === 'series' ? 'tv' : 'movie';
+        const div  = document.createElement('div');
+        div.className = 'result-item';
+        const hasPoster = item.Poster && item.Poster !== 'N/A';
+        div.innerHTML = `
+          ${hasPoster
+            ? `<img class="result-thumb" src="${item.Poster}" alt="" loading="lazy" />`
+            : `<div class="result-thumb empty">—</div>`}
+          <div class="result-info">
+            <div class="result-title">${item.Title}</div>
+            <div class="result-sub">${item.Year}</div>
+          </div>
+          <span class="badge">${item.Type === 'series' ? 'TV' : 'Film'}</span>
+        `;
+        div.addEventListener('click', () => openPlayer(item.imdbID, type, item.Title));
+        resultsEl.appendChild(div);
+      });
+      resultsEl.classList.add('open');
+    }
+
+    function closeResults() {
+      resultsEl.innerHTML = '';
+      resultsEl.classList.remove('open');
+    }
+
+    function openPlayer(imdbId, type, title) {
+      playerFrame.src = `https://vidcore.net/${type}/${imdbId}`;
+      playerTitle.textContent = title;
+      viewSearch.classList.add('hidden');
+      viewPlayer.classList.add('visible');
+    }
+
+    backBtn.addEventListener('click', () => {
+      viewPlayer.classList.remove('visible');
+      viewSearch.classList.remove('hidden');
+      // slight delay before clearing iframe to avoid flash
+      setTimeout(() => { playerFrame.src = ''; }, 600);
+    });
+  </script>
+</body>
+</html>
