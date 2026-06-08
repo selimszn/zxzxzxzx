@@ -29,7 +29,6 @@
       overflow: hidden;
     }
 
-    /* ─── INTRO VIDEO ─────────────────────────────── */
     #intro {
       position: fixed; inset: 0; z-index: 100;
       background: #000;
@@ -43,7 +42,6 @@
       object-fit: cover;
     }
 
-    /* ─── SEARCH VIEW ─────────────────────────────── */
     #view-search {
       position: fixed; inset: 0; z-index: 10;
       display: flex; flex-direction: column;
@@ -137,7 +135,6 @@
       opacity: 0; animation: fadeUp 0.7s var(--ease) 0.3s forwards;
     }
 
-    /* ─── PLAYER VIEW ─────────────────────────────── */
     #view-player {
       position: fixed; inset: 0; z-index: 5;
       display: flex; flex-direction: column;
@@ -184,7 +181,6 @@
       border: none; display: block;
     }
 
-    /* ─── KEYFRAMES ──────────────────────────────── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -193,12 +189,10 @@
 </head>
 <body>
 
-  <!-- INTRO -->
   <div id="intro">
-    <video id="intro-video" src="roller.mkv" autoplay muted playsinline></video>
+    <video id="intro-video" src="roller.mkv" autoplay playsinline></video>
   </div>
 
-  <!-- SEARCH VIEW -->
   <div id="view-search">
     <div class="wordmark">seloflix.</div>
     <div class="search-box">
@@ -208,13 +202,12 @@
     <div id="search-status"></div>
   </div>
 
-  <!-- PLAYER VIEW -->
   <div id="view-player">
     <button class="player-back" id="back-btn">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
         <path d="M10 3L5 8l5 5"/>
       </svg>
-      Back
+      Geri
     </button>
     <div class="player-title" id="player-title"></div>
     <div class="player-shell">
@@ -228,7 +221,6 @@
   </div>
 
   <script>
-    /* ── INTRO ── */
     const intro      = document.getElementById('intro');
     const introVideo = document.getElementById('intro-video');
 
@@ -238,12 +230,9 @@
     }
 
     introVideo.addEventListener('ended', dismissIntro);
-    // fallback: if video can't load/play, dismiss after 100ms
     introVideo.addEventListener('error', () => setTimeout(dismissIntro, 100));
-    // safety net: max 12s
     setTimeout(dismissIntro, 12000);
 
-    /* ── SEARCH ── */
     const searchInput = document.getElementById('search-input');
     const resultsEl   = document.getElementById('results');
     const statusEl    = document.getElementById('search-status');
@@ -262,7 +251,6 @@
       debounce = setTimeout(() => doSearch(q), 370);
     });
 
-    // close results on outside click
     document.addEventListener('click', e => {
       if (!e.target.closest('.search-box')) closeResults();
     });
@@ -314,8 +302,8 @@
 
     function openPlayer(imdbId, type, title, isTv) {
       const src = isTv
-        ? `https://vidcore.net/tv/${imdbId}/1/1`
-        : `https://vidcore.net/movie/${imdbId}`;
+        ? `https://vidcore.net/tv/${imdbId}/1/1?theme=ffffff&poster=false&sub=tr`
+        : `https://vidcore.net/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
 
       playerFrame.src = src;
       playerTitle.textContent = title;
