@@ -13,6 +13,7 @@
       --bg: #0a0a0a;
       --fg: #f0ede8;
       --muted: #444;
+      --muted2: #2e2e2e;
       --subtle: #161616;
       --border: #222;
       --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -29,6 +30,7 @@
       overflow: hidden;
     }
 
+    /* ── INTRO ── */
     #intro {
       position: fixed; inset: 0; z-index: 100;
       background: #000;
@@ -36,12 +38,9 @@
       transition: opacity 0.9s var(--ease);
     }
     #intro.fade-out { opacity: 0; pointer-events: none; }
+    #intro-video { width: 100%; height: 100%; object-fit: cover; }
 
-    #intro-video {
-      width: 100%; height: 100%;
-      object-fit: cover;
-    }
-
+    /* ── SEARCH VIEW ── */
     #view-search {
       position: fixed; inset: 0; z-index: 10;
       display: flex; flex-direction: column;
@@ -49,9 +48,7 @@
       padding: 2rem;
       transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
     }
-    #view-search.hidden {
-      opacity: 0; transform: translateY(-16px); pointer-events: none;
-    }
+    #view-search.hidden { opacity: 0; transform: translateY(-16px); pointer-events: none; }
 
     .wordmark {
       font-family: 'DM Serif Display', serif;
@@ -135,13 +132,15 @@
       opacity: 0; animation: fadeUp 0.7s var(--ease) 0.3s forwards;
     }
 
+    /* ── PLAYER VIEW ── */
     #view-player {
       position: fixed; inset: 0; z-index: 5;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 2rem;
+      padding: 1.5rem 2rem 1.2rem;
       opacity: 0; transform: translateY(16px); pointer-events: none;
       transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+      gap: 0;
     }
     #view-player.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
 
@@ -161,7 +160,7 @@
       font-style: italic;
       font-size: clamp(1rem, 2.2vw, 1.4rem);
       letter-spacing: -0.01em;
-      margin-bottom: 1.1rem;
+      margin-bottom: 0.9rem;
       text-align: center;
       max-width: 860px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -174,11 +173,79 @@
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 0 0 1px var(--border), 0 32px 72px rgba(0,0,0,0.85);
+      flex-shrink: 0;
     }
 
     #player-frame {
       width: 100%; height: 100%;
       border: none; display: block;
+    }
+
+    /* ── EPISODE PICKER ── */
+    #ep-picker {
+      width: 100%; max-width: 900px;
+      margin-top: 0.9rem;
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity 0.4s var(--ease), max-height 0.4s var(--ease), margin-top 0.4s var(--ease);
+    }
+    #ep-picker.visible {
+      opacity: 1;
+      max-height: 140px;
+      margin-top: 0.9rem;
+    }
+
+    .ep-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .ep-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .ep-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      width: 52px;
+      flex-shrink: 0;
+    }
+
+    .ep-scroll {
+      display: flex;
+      gap: 0.35rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      flex: 1;
+      scrollbar-width: none;
+    }
+    .ep-scroll::-webkit-scrollbar { display: none; }
+
+    .ep-btn {
+      flex-shrink: 0;
+      background: none;
+      border: 1px solid var(--muted2);
+      border-radius: 5px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 300;
+      padding: 0.3rem 0.65rem;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .ep-btn:hover { border-color: #444; color: var(--fg); }
+    .ep-btn.active {
+      border-color: var(--fg);
+      color: var(--fg);
+      background: rgba(240,237,232,0.06);
     }
 
     @keyframes fadeUp {
@@ -211,28 +278,35 @@
     </button>
     <div class="player-title" id="player-title"></div>
     <div class="player-shell">
-      <iframe
-        id="player-frame"
-        frameborder="0"
-        allowfullscreen
-        allow="fullscreen"
-      ></iframe>
+      <iframe id="player-frame" frameborder="0" allowfullscreen allow="fullscreen"></iframe>
+    </div>
+    <div id="ep-picker">
+      <div class="ep-inner">
+        <div class="ep-row">
+          <span class="ep-label">Sezon</span>
+          <div class="ep-scroll" id="season-list"></div>
+        </div>
+        <div class="ep-row">
+          <span class="ep-label">Bölüm</span>
+          <div class="ep-scroll" id="episode-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
+    /* ── INTRO ── */
     const intro      = document.getElementById('intro');
     const introVideo = document.getElementById('intro-video');
-
     function dismissIntro() {
       intro.classList.add('fade-out');
       setTimeout(() => intro.remove(), 950);
     }
-
     introVideo.addEventListener('ended', dismissIntro);
     introVideo.addEventListener('error', () => setTimeout(dismissIntro, 100));
     setTimeout(dismissIntro, 12000);
 
+    /* ── ELEMENTS ── */
     const searchInput = document.getElementById('search-input');
     const resultsEl   = document.getElementById('results');
     const statusEl    = document.getElementById('search-status');
@@ -241,43 +315,64 @@
     const playerFrame = document.getElementById('player-frame');
     const playerTitle = document.getElementById('player-title');
     const backBtn     = document.getElementById('back-btn');
+    const epPicker    = document.getElementById('ep-picker');
+    const seasonList  = document.getElementById('season-list');
+    const episodeList = document.getElementById('episode-list');
 
+    /* ── STATE ── */
+    let currentImdbId = null;
+    let currentSeason = 1;
+    let currentEpisode = 1;
+    let totalSeasons = 1;
+    let episodeCounts = {}; // { 1: 10, 2: 22, ... }
+
+    /* ── SEARCH ── */
     let debounce;
-
     searchInput.addEventListener('input', () => {
       clearTimeout(debounce);
       const q = searchInput.value.trim();
       if (!q) { closeResults(); statusEl.textContent = ''; return; }
-      debounce = setTimeout(() => doSearch(q), 370);
+      debounce = setTimeout(() => doSearch(q), 420);
     });
 
     document.addEventListener('click', e => {
       if (!e.target.closest('.search-box')) closeResults();
     });
 
+    // Try multiple free OMDb keys in sequence so rate limits don't block us
+    const OMDB_KEYS = ['4a6a92df', 'thewdb', 'trilogy', 'b8b7fe8'];
+
+    async function omdbFetch(params) {
+      for (const key of OMDB_KEYS) {
+        try {
+          const url = `https://www.omdbapi.com/?${params}&apikey=${key}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.Response !== 'False' || data.Error === 'Movie not found!') return data;
+          if (data.Error && data.Error.toLowerCase().includes('limit')) continue;
+          return data;
+        } catch { continue; }
+      }
+      return { Response: 'False', Error: 'All keys exhausted' };
+    }
+
     async function doSearch(q) {
       statusEl.textContent = '👀';
       closeResults();
-      try {
-        const res  = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=trilogy`);
-        const data = await res.json();
-        if (data.Response === 'False' || !data.Search) {
-          statusEl.textContent = 'Yanlış yazdın';
-          return;
-        }
-        statusEl.textContent = '';
-        renderResults(data.Search);
-      } catch {
-        statusEl.textContent = 'hata';
+      const data = await omdbFetch(`s=${encodeURIComponent(q)}&type=`);
+      if (data.Response === 'False' || !data.Search) {
+        statusEl.textContent = 'Yanlış yazdın';
+        return;
       }
+      statusEl.textContent = '';
+      renderResults(data.Search);
     }
 
     function renderResults(items) {
       resultsEl.innerHTML = '';
       items.forEach(item => {
-        const isTv   = item.Type === 'series';
-        const type   = isTv ? 'tv' : 'movie';
-        const div    = document.createElement('div');
+        const isTv = item.Type === 'series';
+        const div  = document.createElement('div');
         div.className = 'result-item';
         const hasPoster = item.Poster && item.Poster !== 'N/A';
         div.innerHTML = `
@@ -290,32 +385,100 @@
           </div>
           <span class="badge">${isTv ? 'TV' : 'Film'}</span>
         `;
-        div.addEventListener('click', () => openPlayer(item.imdbID, type, item.Title, isTv));
+        div.addEventListener('click', () => openPlayer(item.imdbID, isTv, item.Title));
         resultsEl.appendChild(div);
       });
       resultsEl.classList.add('open');
     }
 
-    function closeResults() {
-      resultsEl.classList.remove('open');
-    }
+    function closeResults() { resultsEl.classList.remove('open'); }
 
-    function openPlayer(imdbId, type, title, isTv) {
-      const src = isTv
-        ? `https://vidcore.net/tv/${imdbId}/1/1?theme=ffffff&poster=false&sub=tr`
-        : `https://vidcore.net/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
+    /* ── PLAYER ── */
+    async function openPlayer(imdbId, isTv, title) {
+      currentImdbId  = imdbId;
+      currentSeason  = 1;
+      currentEpisode = 1;
+      episodeCounts  = {};
 
-      playerFrame.src = src;
       playerTitle.textContent = title;
       closeResults();
-
       viewSearch.classList.add('hidden');
       viewPlayer.classList.add('visible');
+
+      if (isTv) {
+        loadFrame(imdbId, 1, 1);
+        epPicker.classList.add('visible');
+        await loadSeriesInfo(imdbId);
+      } else {
+        playerFrame.src = `https://vidcore.net/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
+        epPicker.classList.remove('visible');
+      }
     }
 
+    function loadFrame(imdbId, season, episode) {
+      playerFrame.src = `https://vidcore.net/tv/${imdbId}/${season}/${episode}?theme=ffffff&poster=false&sub=tr`;
+    }
+
+    async function loadSeriesInfo(imdbId) {
+      seasonList.innerHTML  = '<span style="font-size:0.7rem;color:#333">yükleniyor…</span>';
+      episodeList.innerHTML = '';
+
+      const data = await omdbFetch(`i=${imdbId}&type=series`);
+      totalSeasons = parseInt(data.totalSeasons) || 1;
+
+      // fetch episode counts per season (parallel, up to 10 seasons shown instantly)
+      const cap = Math.min(totalSeasons, 20);
+      const fetches = Array.from({ length: cap }, (_, i) =>
+        omdbFetch(`i=${imdbId}&Season=${i + 1}`).then(d => {
+          episodeCounts[i + 1] = d.Episodes ? d.Episodes.length : 0;
+        }).catch(() => { episodeCounts[i + 1] = 0; })
+      );
+      await Promise.all(fetches);
+
+      renderSeasons(cap);
+      renderEpisodes(1);
+    }
+
+    function renderSeasons(count) {
+      seasonList.innerHTML = '';
+      for (let s = 1; s <= count; s++) {
+        const btn = document.createElement('button');
+        btn.className = 'ep-btn' + (s === currentSeason ? ' active' : '');
+        btn.textContent = `S${String(s).padStart(2, '0')}`;
+        btn.addEventListener('click', () => {
+          currentSeason  = s;
+          currentEpisode = 1;
+          document.querySelectorAll('#season-list .ep-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderEpisodes(s);
+          loadFrame(currentImdbId, s, 1);
+        });
+        seasonList.appendChild(btn);
+      }
+    }
+
+    function renderEpisodes(season) {
+      episodeList.innerHTML = '';
+      const count = episodeCounts[season] || 24; // fallback 24 if still loading
+      for (let e = 1; e <= count; e++) {
+        const btn = document.createElement('button');
+        btn.className = 'ep-btn' + (e === currentEpisode ? ' active' : '');
+        btn.textContent = `E${String(e).padStart(2, '0')}`;
+        btn.addEventListener('click', () => {
+          currentEpisode = e;
+          document.querySelectorAll('#episode-list .ep-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          loadFrame(currentImdbId, currentSeason, e);
+        });
+        episodeList.appendChild(btn);
+      }
+    }
+
+    /* ── BACK ── */
     backBtn.addEventListener('click', () => {
       viewPlayer.classList.remove('visible');
       viewSearch.classList.remove('hidden');
+      epPicker.classList.remove('visible');
       setTimeout(() => { playerFrame.src = ''; }, 600);
     });
   </script>
