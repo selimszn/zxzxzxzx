@@ -324,55 +324,44 @@
     let currentSeason = 1;
     let currentEpisode = 1;
     let totalSeasons = 1;
-    let episodeCounts = {}; // { 1: 10, 2: 22, ... }
+    let episodeCounts = {};
 
     /* ── SEARCH ── */
     let debounce;
+
     searchInput.addEventListener('input', () => {
       clearTimeout(debounce);
       const q = searchInput.value.trim();
       if (!q) { closeResults(); statusEl.textContent = ''; return; }
-      debounce = setTimeout(() => doSearch(q), 420);
+      debounce = setTimeout(() => doSearch(q), 370);
     });
 
     document.addEventListener('click', e => {
       if (!e.target.closest('.search-box')) closeResults();
     });
 
-    // Try multiple free OMDb keys in sequence so rate limits don't block us
-    const OMDB_KEYS = ['4a6a92df', 'thewdb', 'trilogy', 'b8b7fe8'];
-
-    async function omdbFetch(params) {
-      for (const key of OMDB_KEYS) {
-        try {
-          const url = `https://www.omdbapi.com/?${params}&apikey=${key}`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data.Response !== 'False' || data.Error === 'Movie not found!') return data;
-          if (data.Error && data.Error.toLowerCase().includes('limit')) continue;
-          return data;
-        } catch { continue; }
-      }
-      return { Response: 'False', Error: 'All keys exhausted' };
-    }
-
     async function doSearch(q) {
       statusEl.textContent = '👀';
       closeResults();
-      const data = await omdbFetch(`s=${encodeURIComponent(q)}&type=`);
-      if (data.Response === 'False' || !data.Search) {
-        statusEl.textContent = 'Yanlış yazdın';
-        return;
+      try {
+        const res  = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=trilogy`);
+        const data = await res.json();
+        if (data.Response === 'False' || !data.Search) {
+          statusEl.textContent = 'Yanlış yazdın';
+          return;
+        }
+        statusEl.textContent = '';
+        renderResults(data.Search);
+      } catch {
+        statusEl.textContent = 'hata';
       }
-      statusEl.textContent = '';
-      renderResults(data.Search);
     }
 
     function renderResults(items) {
       resultsEl.innerHTML = '';
       items.forEach(item => {
-        const isTv = item.Type === 'series';
-        const div  = document.createElement('div');
+        const isTv   = item.Type === 'series';
+        const div    = document.createElement('div');
         div.className = 'result-item';
         const hasPoster = item.Poster && item.Poster !== 'N/A';
         div.innerHTML = `
@@ -419,6 +408,16 @@
       playerFrame.src = `https://vidcore.net/tv/${imdbId}/${season}/${episode}?theme=ffffff&poster=false&sub=tr`;
     }
 
+    /* ── EXTRA OMDB UTILITY FOR EPISODES ── */
+    async function omdbFetch(params) {
+      try {
+        const res = await fetch(`https://www.omdbapi.com/?${params}&apikey=trilogy`);
+        return await res.json();
+      } catch {
+        return { Response: 'False' };
+      }
+    }
+
     async function loadSeriesInfo(imdbId) {
       seasonList.innerHTML  = '<span style="font-size:0.7rem;color:#333">yükleniyor…</span>';
       episodeList.innerHTML = '';
@@ -426,7 +425,6 @@
       const data = await omdbFetch(`i=${imdbId}&type=series`);
       totalSeasons = parseInt(data.totalSeasons) || 1;
 
-      // fetch episode counts per season (parallel, up to 10 seasons shown instantly)
       const cap = Math.min(totalSeasons, 20);
       const fetches = Array.from({ length: cap }, (_, i) =>
         omdbFetch(`i=${imdbId}&Season=${i + 1}`).then(d => {
@@ -459,7 +457,7 @@
 
     function renderEpisodes(season) {
       episodeList.innerHTML = '';
-      const count = episodeCounts[season] || 24; // fallback 24 if still loading
+      const count = episodeCounts[season] || 24;
       for (let e = 1; e <= count; e++) {
         const btn = document.createElement('button');
         btn.className = 'ep-btn' + (e === currentEpisode ? ' active' : '');
