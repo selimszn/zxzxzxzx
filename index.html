@@ -278,7 +278,7 @@
     </button>
     <div class="player-title" id="player-title"></div>
     <div class="player-shell">
-      <iframe id="player-frame" frameborder="0" allowfullscreen allow="fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"></iframe>
+      <iframe id="player-frame" frameborder="0" allowfullscreen allow="fullscreen"></iframe>
     </div>
     <div id="ep-picker">
       <div class="ep-inner">
@@ -399,13 +399,29 @@
         epPicker.classList.add('visible');
         await loadSeriesInfo(imdbId);
       } else {
-        playerFrame.src = `https://vidcore.net/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
+        const targetSrc = `https://vidcore.net/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
+        loadFrameWithDelayedSandbox(targetSrc);
         epPicker.classList.remove('visible');
       }
     }
 
     function loadFrame(imdbId, season, episode) {
-      playerFrame.src = `https://vidcore.net/tv/${imdbId}/${season}/${episode}?theme=ffffff&poster=false&sub=tr`;
+      const targetSrc = `https://vidcore.net/tv/${imdbId}/${season}/${episode}?theme=ffffff&poster=false&sub=tr`;
+      loadFrameWithDelayedSandbox(targetSrc);
+    }
+
+    // Gecikmeli Sandbox Uygulama Fonksiyonu
+    let sandboxTimeout;
+    function loadFrameWithDelayedSandbox(src) {
+      clearTimeout(sandboxTimeout);
+      // İlk yüklemede sandbox'ı tamamen kaldırıp video player'ın onayını alıyoruz
+      playerFrame.removeAttribute('sandbox');
+      playerFrame.src = src;
+
+      // Player yüklendikten 3.5 saniye sonra gizlice sandbox'ı çakıyoruz
+      sandboxTimeout = setTimeout(() => {
+        playerFrame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+      }, 3500);
     }
 
     /* ── EXTRA OMDB UTILITY FOR EPISODES ── */
@@ -474,10 +490,11 @@
 
     /* ── BACK ── */
     backBtn.addEventListener('click', () => {
+      clearTimeout(sandboxTimeout);
       viewPlayer.classList.remove('visible');
       viewSearch.classList.remove('hidden');
       epPicker.classList.remove('visible');
-      setTimeout(() => { playerFrame.src = ''; }, 600);
+      setTimeout(() => { playerFrame.src = ''; playerFrame.removeAttribute('sandbox'); }, 600);
     });
   </script>
 </body>
