@@ -38,41 +38,41 @@
     .blob {
       position: absolute;
       border-radius: 50%;
-      filter: blur(90px);
-      opacity: 0.14;
+      filter: blur(70px);
+      opacity: 0.22;
       background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+      will-change: transform;
     }
-    .blob.b1 { width: 520px; height: 520px; top: -12%; left: -8%; animation: drift1 26s ease-in-out infinite alternate; }
-    .blob.b2 { width: 620px; height: 620px; bottom: -18%; right: -10%; animation: drift2 32s ease-in-out infinite alternate; }
-    .blob.b3 { width: 440px; height: 440px; top: 38%; left: 58%; opacity: 0.09; animation: drift3 22s ease-in-out infinite alternate; }
+    .blob.b1 { width: 520px; height: 520px; top: -12%; left: -8%; animation: drift1 11s ease-in-out infinite alternate; }
+    .blob.b2 { width: 620px; height: 620px; bottom: -18%; right: -10%; animation: drift2 14s ease-in-out infinite alternate; }
+    .blob.b3 { width: 440px; height: 440px; top: 38%; left: 58%; opacity: 0.16; animation: drift3 9s ease-in-out infinite alternate; }
 
-    @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(110px, 70px); } }
-    @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-90px, -60px); } }
-    @keyframes drift3 { from { transform: translate(0,0) scale(1); } to { transform: translate(-70px, 90px) scale(1.2); } }
+    @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(160px, 100px); } }
+    @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-140px, -90px); } }
+    @keyframes drift3 { from { transform: translate(0,0) scale(1); } to { transform: translate(-110px, 130px) scale(1.2); } }
 
     /* ── NOISE ── */
     #noise {
-      position: fixed; top: -50%; left: -50%; z-index: 1;
-      width: 200%; height: 200%;
+      position: fixed; inset: 0; z-index: 1;
       pointer-events: none;
-      opacity: 0.055;
+      opacity: 0.05;
       mix-blend-mode: overlay;
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
       background-size: 180px 180px;
-      animation: grain 1s steps(1) infinite;
+      animation: grain 8s steps(8) infinite;
+      will-change: background-position;
     }
 
     @keyframes grain {
-      0%, 100% { transform: translate(0,0); }
-      10% { transform: translate(-2%,-3%); }
-      20% { transform: translate(-4%,2%); }
-      30% { transform: translate(2%,-4%); }
-      40% { transform: translate(-2%,5%); }
-      50% { transform: translate(-4%,2%); }
-      60% { transform: translate(3%,0); }
-      70% { transform: translate(0,3%); }
-      80% { transform: translate(-3%,0); }
-      90% { transform: translate(2%,2%); }
+      0%   { background-position: 0 0; }
+      12%  { background-position: -15px 8px; }
+      24%  { background-position: 12px -10px; }
+      36%  { background-position: -8px -14px; }
+      48%  { background-position: 16px 6px; }
+      60%  { background-position: -12px 12px; }
+      72%  { background-position: 8px -8px; }
+      84%  { background-position: -16px -4px; }
+      100% { background-position: 0 0; }
     }
 
     /* ── APP ── */
@@ -118,16 +118,22 @@
       border-radius: 9px;
       padding: 1.5px;
       isolation: isolate;
+      overflow: hidden;
     }
     .search-glow::before {
       content: '';
       position: absolute; inset: 0;
       border-radius: inherit;
-      background: conic-gradient(from 0deg, transparent 0%, rgba(255,255,255,0.55) 12%, transparent 28%, transparent 100%);
-      animation: spin 5s linear infinite;
+      background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.65) 50%, transparent 70%);
+      background-size: 260% 100%;
+      animation: shimmer 3.6s ease-in-out infinite;
       z-index: 0;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes shimmer {
+      0%   { background-position: 160% 0; }
+      50%  { background-position: -60% 0; }
+      100% { background-position: -60% 0; }
+    }
 
     #search-input {
       position: relative; z-index: 1;
@@ -545,14 +551,14 @@
         epPicker.classList.add('visible');
         await loadSeriesInfo(imdbId);
       } else {
-        const targetSrc = `https://vidcore.net/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
+        const targetSrc = `https://vidcore.io/movie/${imdbId}?theme=ffffff&poster=false&sub=tr`;
         loadFrameWithDelayedSandbox(targetSrc);
         epPicker.classList.remove('visible');
       }
     }
 
     function loadFrame(imdbId, season, episode) {
-      const targetSrc = `https://vidcore.net/tv/${imdbId}/${season}/${episode}?theme=ffffff&poster=false&sub=tr`;
+      const targetSrc = `https://vidcore.io/tv/${imdbId}/${season}/${episode}?theme=ffffff&poster=false&sub=tr`;
       loadFrameWithDelayedSandbox(targetSrc);
     }
 
@@ -645,12 +651,12 @@
 
     /* ── HOME ROWS ── */
     const ROWS = [
-      { label: 'Trend Şu An', titles: ['Stranger Things', 'The Boys', 'Wednesday', 'The Last of Us', 'House of the Dragon', 'Breaking Bad', 'Money Heist', 'Dark'] },
-      { label: 'Aksiyon', titles: ['John Wick', 'Mad Max: Fury Road', 'The Dark Knight', 'Gladiator', 'Extraction', 'Top Gun: Maverick', 'Fast Five', 'Mission: Impossible - Fallout'] },
-      { label: 'Bilim Kurgu', titles: ['Inception', 'Interstellar', 'Dune', 'Blade Runner 2049', 'The Matrix', 'Arrival', 'Ex Machina', 'Edge of Tomorrow'] },
-      { label: 'Komedi', titles: ['The Grand Budapest Hotel', 'Superbad', 'Brooklyn Nine-Nine', 'The Office', 'Parks and Recreation', 'Deadpool', '21 Jump Street', 'Ted'] },
-      { label: 'Efsaneler', titles: ['The Godfather', 'Pulp Fiction', 'Fight Club', 'The Shawshank Redemption', 'Goodfellas', 'Se7en', 'The Departed', 'Forrest Gump'] },
-      { label: 'Animasyon', titles: ['Spider-Man: Into the Spider-Verse', 'Spirited Away', 'Coco', 'Inside Out', 'The Lion King', 'How to Train Your Dragon', 'Arcane', 'Your Name'] }
+      { label: 'Trend Şu An', titles: ['Stranger Things', 'The Boys', 'Wednesday', 'The Last of Us', 'House of the Dragon', 'Breaking Bad', 'Money Heist', 'Dark', 'Squid Game', 'The Witcher', 'Peaky Blinders', 'Chernobyl', 'Better Call Saul', 'Loki'] },
+      { label: 'Aksiyon', titles: ['John Wick', 'Mad Max: Fury Road', 'The Dark Knight', 'Gladiator', 'Extraction', 'Top Gun: Maverick', 'Fast Five', 'Mission: Impossible - Fallout', 'Die Hard', 'The Raid', 'Kingsman: The Secret Service', 'Sicario', 'Edge of Tomorrow', 'Baby Driver'] },
+      { label: 'Bilim Kurgu', titles: ['Inception', 'Interstellar', 'Dune', 'Blade Runner 2049', 'The Matrix', 'Arrival', 'Ex Machina', 'Edge of Tomorrow', 'Tenet', 'The Martian', 'Children of Men', 'District 9', 'Looper', 'Annihilation'] },
+      { label: 'Komedi', titles: ['The Grand Budapest Hotel', 'Superbad', 'Brooklyn Nine-Nine', 'The Office', 'Parks and Recreation', 'Deadpool', '21 Jump Street', 'Ted', 'The Hangover', 'Knives Out', 'Game Night', 'Booksmart', 'Step Brothers', 'Zombieland'] },
+      { label: 'Efsaneler', titles: ['The Godfather', 'Pulp Fiction', 'Fight Club', 'The Shawshank Redemption', 'Goodfellas', 'Se7en', 'The Departed', 'Forrest Gump', 'The Green Mile', 'American History X', 'Whiplash', 'No Country for Old Men', 'There Will Be Blood', 'Heat'] },
+      { label: 'Animasyon', titles: ['Spider-Man: Into the Spider-Verse', 'Spirited Away', 'Coco', 'Inside Out', 'The Lion King', 'How to Train Your Dragon', 'Arcane', 'Your Name', 'Zootopia', 'Up', 'Toy Story', 'WALL-E', 'Ratatouille', 'The Incredibles'] }
     ];
 
     async function buildRows() {
