@@ -29,25 +29,51 @@
       overflow: hidden;
     }
 
+    /* ── AMBIENT LIVING BACKGROUND ── */
+    #ambient {
+      position: fixed; inset: 0; z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.14;
+      background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+    }
+    .blob.b1 { width: 520px; height: 520px; top: -12%; left: -8%; animation: drift1 26s ease-in-out infinite alternate; }
+    .blob.b2 { width: 620px; height: 620px; bottom: -18%; right: -10%; animation: drift2 32s ease-in-out infinite alternate; }
+    .blob.b3 { width: 440px; height: 440px; top: 38%; left: 58%; opacity: 0.09; animation: drift3 22s ease-in-out infinite alternate; }
+
+    @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(110px, 70px); } }
+    @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-90px, -60px); } }
+    @keyframes drift3 { from { transform: translate(0,0) scale(1); } to { transform: translate(-70px, 90px) scale(1.2); } }
+
     /* ── NOISE ── */
     #noise {
-      position: fixed; inset: 0; z-index: 1;
+      position: fixed; top: -50%; left: -50%; z-index: 1;
+      width: 200%; height: 200%;
       pointer-events: none;
-      opacity: 0.05;
+      opacity: 0.055;
       mix-blend-mode: overlay;
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
       background-size: 180px 180px;
+      animation: grain 1s steps(1) infinite;
     }
 
-    /* ── INTRO ── */
-    #intro {
-      position: fixed; inset: 0; z-index: 100;
-      background: #000;
-      display: flex; align-items: center; justify-content: center;
-      transition: opacity 0.9s var(--ease);
+    @keyframes grain {
+      0%, 100% { transform: translate(0,0); }
+      10% { transform: translate(-2%,-3%); }
+      20% { transform: translate(-4%,2%); }
+      30% { transform: translate(2%,-4%); }
+      40% { transform: translate(-2%,5%); }
+      50% { transform: translate(-4%,2%); }
+      60% { transform: translate(3%,0); }
+      70% { transform: translate(0,3%); }
+      80% { transform: translate(-3%,0); }
+      90% { transform: translate(2%,2%); }
     }
-    #intro.fade-out { opacity: 0; pointer-events: none; }
-    #intro-video { width: 100%; height: 100%; object-fit: cover; }
 
     /* ── APP ── */
     #app {
@@ -87,7 +113,24 @@
       animation: fadeUp 0.7s var(--ease) 0.2s forwards;
     }
 
+    .search-glow {
+      position: relative;
+      border-radius: 9px;
+      padding: 1.5px;
+      isolation: isolate;
+    }
+    .search-glow::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      background: conic-gradient(from 0deg, transparent 0%, rgba(255,255,255,0.55) 12%, transparent 28%, transparent 100%);
+      animation: spin 5s linear infinite;
+      z-index: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     #search-input {
+      position: relative; z-index: 1;
       width: 100%;
       background: var(--subtle);
       border: none;
@@ -185,10 +228,16 @@
       gap: 1.1rem;
       overflow-x: auto;
       overflow-y: visible;
-      padding: 10px 2.2rem 26px;
+      padding: 10px 0 26px 2.2rem;
       scrollbar-width: none;
+      -webkit-mask-image: linear-gradient(to right, black 92%, transparent 100%);
+      mask-image: linear-gradient(to right, black 92%, transparent 100%);
     }
     .row-track::-webkit-scrollbar { display: none; }
+    .row-track::after {
+      content: '';
+      flex: 0 0 2.2rem;
+    }
 
     .card {
       flex: 0 0 152px;
@@ -348,17 +397,20 @@
 </head>
 <body>
 
-  <div id="noise"></div>
-
-  <div id="intro">
-    <video id="intro-video" src="roller.mkv" autoplay playsinline></video>
+  <div id="ambient">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
   </div>
+  <div id="noise"></div>
 
   <div id="app">
     <div class="topbar">
       <div class="wordmark">seloflix.</div>
       <div class="search-box">
-        <input id="search-input" type="text" placeholder="Film/Dizi/Anime" autocomplete="off" spellcheck="false" />
+        <div class="search-glow">
+          <input id="search-input" type="text" placeholder="Film/Dizi/Anime" autocomplete="off" spellcheck="false" />
+        </div>
         <div id="results"></div>
       </div>
       <div id="search-status"></div>
@@ -375,7 +427,7 @@
     </button>
     <div class="player-title" id="player-title"></div>
     <div class="player-shell">
-      <iframe id="player-frame" frameborder="0" allowfullscreen allow="fullscreen"></iframe>
+      <iframe id="player-frame" frameborder="0" allow="fullscreen; autoplay; picture-in-picture"></iframe>
     </div>
     <div id="ep-picker">
       <div class="ep-inner">
@@ -392,17 +444,6 @@
   </div>
 
   <script>
-    /* ── INTRO ── */
-    const intro      = document.getElementById('intro');
-    const introVideo = document.getElementById('intro-video');
-    function dismissIntro() {
-      intro.classList.add('fade-out');
-      setTimeout(() => intro.remove(), 950);
-    }
-    introVideo.addEventListener('ended', dismissIntro);
-    introVideo.addEventListener('error', () => setTimeout(dismissIntro, 100));
-    setTimeout(dismissIntro, 12000);
-
     /* ── ELEMENTS ── */
     const searchInput = document.getElementById('search-input');
     const resultsEl   = document.getElementById('results');
@@ -473,6 +514,12 @@
           <span class="badge">${isTv ? 'TV' : 'Film'}</span>
         `;
         div.addEventListener('click', () => openPlayer(item.imdbID, isTv, item.Title));
+        const thumbImg = div.querySelector('img.result-thumb');
+        if (thumbImg) {
+          thumbImg.addEventListener('error', () => {
+            thumbImg.outerHTML = '<div class="result-thumb empty">—</div>';
+          }, { once: true });
+        }
         resultsEl.appendChild(div);
       });
       resultsEl.classList.add('open');
@@ -640,6 +687,8 @@
             <div class="card-sub">${d.Year}${d.Type === 'series' ? ' · Dizi' : ''}</div>
           `;
           card.addEventListener('click', () => openPlayer(d.imdbID, d.Type === 'series', d.Title));
+          const img = card.querySelector('img');
+          img.addEventListener('error', () => card.remove(), { once: true });
           track.appendChild(card);
         });
 
