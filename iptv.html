@@ -177,25 +177,48 @@
     const video = document.getElementById('video');
     const channelListEl = document.getElementById('channelList');
     let channels = [];
+    let displayedChannels = [];
     let hls = null;
 
- function playStream(url) {
-  // Route stream manifest through your Vercel API proxy
-  const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+    function playStream(url) {
+      const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
 
-  if (Hls.isSupported()) {
-    if (hls) hls.destroy();
-    hls = new Hls();
-    hls.loadSource(proxiedStreamUrl);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {});
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = proxiedStreamUrl;
-    video.play();
-  }
-}
+      if (Hls.isSupported()) {
+        if (hls) hls.destroy();
+        hls = new Hls({
+          xhrSetup: function(xhr, url) {
+            // Keep proxy mapping for relative segment manifests requested by HLS.js
+            if (!url.startsWith('/api/proxy') && !url.startsWith('http')) {
+              const absoluteUrl = new URL(url, window.location.href).href;
+              xhr.open('GET', `/api/proxy?url=${encodeURIComponent(absoluteUrl)}`, true);
+            }
+          }
+        });
+        hls.loadSource(proxiedStreamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = proxiedStreamUrl;
+        video.play();
+      }
+    }
 
     function loadFromUrl() {
       const rawUrl = document.getElementById('playlistUrl').value.trim();
@@ -203,7 +226,6 @@
 
       channelListEl.innerHTML = '<li class="status-msg">Loading playlist via Vercel API proxy...</li>';
 
-      // Route the fetch request through your Vercel serverless function
       const proxiedUrl = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
 
       fetch(proxiedUrl)
@@ -217,7 +239,7 @@
           channelListEl.innerHTML = `
             <li class="status-msg" style="color: #f87171;">
               <strong>Failed to fetch playlist via proxy.</strong><br><br>
-              Ensure the project folder structure is correct and deployed to Vercel.<br><br>
+              Ensure your Vercel serverless function endpoint at <code>/api/proxy</code> is operational and deployed.<br><br>
               <strong>Fallback:</strong> Click "Upload Local M3U" above and select your downloaded .m3u file.
             </li>`;
         });
@@ -251,8 +273,9 @@
         }
       }
 
-      renderChannels(channels);
-      if (channels.length > 0) {
+      displayedChannels = [...channels];
+      renderChannels(displayedChannels);
+      if (displayedChannels.length > 0) {
         selectChannel(0);
       }
     }
@@ -260,7 +283,7 @@
     function renderChannels(items) {
       channelListEl.innerHTML = '';
       if (items.length === 0) {
-        channelListEl.innerHTML = '<li class="status-msg">No channels found in playlist.</li>';
+        channelListEl.innerHTML = '<li class="status-msg">No channels found.</li>';
         return;
       }
 
@@ -274,6 +297,8 @@
     }
 
     function selectChannel(index, element) {
+      if (!displayedChannels[index]) return;
+
       document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
 
       if (element) {
@@ -283,13 +308,13 @@
         if (allItems[index]) allItems[index].classList.add('active');
       }
 
-      playStream(channels[index].url);
+      playStream(displayedChannels[index].url);
     }
 
     function filterChannels() {
       const query = document.getElementById('filterInput').value.toLowerCase();
-      const filtered = channels.filter(ch => ch.name.toLowerCase().includes(query));
-      renderChannels(filtered);
+      displayedChannels = channels.filter(ch => ch.name.toLowerCase().includes(query));
+      renderChannels(displayedChannels);
     }
 
     window.onload = loadFromUrl;
