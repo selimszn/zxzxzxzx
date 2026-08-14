@@ -168,7 +168,7 @@
         <input type="text" id="filterInput" style="width: 100%;" placeholder="Search channels..." oninput="filterChannels()" />
       </div>
       <ul class="channel-list" id="channelList">
-        <li class="status-msg">Fetching channels...</li>
+        <li class="status-msg">Fetching channels via Vercel Proxy...</li>
       </ul>
     </div>
   </div>
@@ -197,14 +197,17 @@
     }
 
     function loadFromUrl() {
-      const url = document.getElementById('playlistUrl').value.trim();
-      if (!url) return;
+      const rawUrl = document.getElementById('playlistUrl').value.trim();
+      if (!rawUrl) return;
 
-      channelListEl.innerHTML = '<li class="status-msg">Loading channels from server...</li>';
+      channelListEl.innerHTML = '<li class="status-msg">Loading playlist via Vercel API proxy...</li>';
 
-      fetch(url)
+      // Route the fetch request through your Vercel serverless function
+      const proxiedUrl = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+
+      fetch(proxiedUrl)
         .then(res => {
-          if (!res.ok) throw new Error("Server network response failed");
+          if (!res.ok) throw new Error("Proxy error: " + res.status);
           return res.text();
         })
         .then(text => parseM3U(text))
@@ -212,12 +215,9 @@
           console.error("Fetch failed:", err);
           channelListEl.innerHTML = `
             <li class="status-msg" style="color: #f87171;">
-              <strong>CORS Security Blocked:</strong><br><br>
-              Browsers block direct web requests to external IPTV servers.<br><br>
-              <strong>Workaround:</strong><br>
-              1. Copy the playlist URL from the top bar.<br>
-              2. Open a new tab, paste it, and press Enter to download the file.<br>
-              3. Click <strong>"Upload Local M3U"</strong> above and select the file.
+              <strong>Failed to fetch playlist via proxy.</strong><br><br>
+              Ensure the project folder structure is correct and deployed to Vercel.<br><br>
+              <strong>Fallback:</strong> Click "Upload Local M3U" above and select your downloaded .m3u file.
             </li>`;
         });
     }
@@ -291,7 +291,6 @@
       renderChannels(filtered);
     }
 
-    // Automatically trigger playlist load on startup
     window.onload = loadFromUrl;
   </script>
 </body>
