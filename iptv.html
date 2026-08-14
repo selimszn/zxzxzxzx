@@ -179,22 +179,23 @@
     let channels = [];
     let hls = null;
 
-    function playStream(url) {
-      if (Hls.isSupported()) {
-        if (hls) hls.destroy();
-        hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(() => {});
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-        video.play();
-      } else {
-        alert("Your browser does not support HLS streaming.");
-      }
-    }
+ function playStream(url) {
+  // Route stream manifest through your Vercel API proxy
+  const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+
+  if (Hls.isSupported()) {
+    if (hls) hls.destroy();
+    hls = new Hls();
+    hls.loadSource(proxiedStreamUrl);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {});
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = proxiedStreamUrl;
+    video.play();
+  }
+}
 
     function loadFromUrl() {
       const rawUrl = document.getElementById('playlistUrl').value.trim();
