@@ -71,52 +71,54 @@
     </div>
   </div>
 
-  <script>
-    const video = document.getElementById('video');
-    
-    // Direct stream link constructed specifically for channel 289
-    const directStreamUrl = "http://85st63.3074618.xyz:8080/live/szr.8156/VxMKL2LmSL/289.m3u8";
+<script>
+  const video = document.getElementById('video');
+  const directStreamUrl = "http://85st63.3074618.xyz:8080/live/szr.8156/VxMKL2LmSL/289.m3u8";
 
-    function playStream(rawUrl) {
-      const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+  function playStream(rawUrl) {
+    const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          xhrSetup: function(xhr, url) {
-            if (!url.startsWith('/api/proxy') && !url.startsWith('http')) {
-              const absoluteUrl = new URL(url, window.location.href).href;
-              xhr.open('GET', `/api/proxy?url=${encodeURIComponent(absoluteUrl)}`, true);
-            }
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        // Redirect relative HLS segment (.ts) requests back into /api/proxy
+        xhrSetup: function(xhr, url) {
+          if (!url.includes('/api/proxy')) {
+            const proxiedUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+            xhr.open('GET', proxiedUrl, true);
           }
-        });
-        hls.loadSource(proxiedStreamUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(() => {});
-        });
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                hls.destroy();
-                break;
-            }
+        }
+      });
+
+      hls.loadSource(proxiedStreamUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(err => console.log("Autoplay blocked:", err));
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.log("Network error encounted, trying to recover...");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
           }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = proxiedStreamUrl;
-        video.play();
-      }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = proxiedStreamUrl;
+      video.play();
     }
+  }
 
-    // Immediately play channel 289 when the page loads
-    window.onload = () => playStream(directStreamUrl);
-  </script>
+  window.onload = () => playStream(directStreamUrl);
+</script>
 </body>
 </html>
