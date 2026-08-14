@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPTV Player - Channel 289</title>
+  <title>IPTV Direct Player</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     body {
@@ -33,7 +33,7 @@
 
     .title {
       font-weight: 600;
-      font-size: 1rem;
+      font-size: 0.95rem;
       color: #38bdf8;
     }
 
@@ -62,7 +62,7 @@
 <body>
 
   <header>
-    <div class="title">IPTV Direct Player — Channel ID #289</div>
+    <div class="title">Live Stream — Channel ID #366152</div>
   </header>
 
   <div class="container">
@@ -71,54 +71,56 @@
     </div>
   </div>
 
-<script>
-  const video = document.getElementById('video');
-  const directStreamUrl = "http://85st63.3074618.xyz:8080/live/szr.8156/VxMKL2LmSL/289.m3u8";
+  <script>
+    const video = document.getElementById('video');
+    
+    // Target stream link with active session token
+    const directStreamUrl = "http://gs8sma2.95147380.xyz:8080/live/szr.8156/VxMKL2LmSL/366152.m3u8?token=S0ENUhFZRw8RBQEGDlQDWwRUXlMJDAQCA1cOAlJSUF8GWlxQWgFWBwdDTxJLRBQHAAlnWVwaXwNQVAYCBR8XTEMGF2wLVUcPEVBUBgEBXlNDSBpEUVUAElxSGxVHWlEbCkFUA1MHVgYRTUFVQEQDEA8FVG9cXRNZBQcVDVlGWVUcQQpdPVUAWFIPBxICElZATUZRQ0gaX14TDlsbFVFcTUICEVZAC0cGClZXEhQSBQ0UCkxCQRpfEiQlFRsVVk1NVQ0WWg1fRw8RDFBFABJKQAgXZ0JdSxFCAwNaUkURDxsAQUkRD1AdalAODV5dUxILDgpLEgIaVBJKQFpYWVpBVkI8FVoGE18XAlFSBQEFRB8=";
 
-  function playStream(rawUrl) {
-    const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+    function playStream(rawUrl) {
+      const proxiedStreamUrl = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        // Redirect relative HLS segment (.ts) requests back into /api/proxy
-        xhrSetup: function(xhr, url) {
-          if (!url.includes('/api/proxy')) {
-            const proxiedUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-            xhr.open('GET', proxiedUrl, true);
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          xhrSetup: function(xhr, url) {
+            // Ensure all relative segment requests (.ts files) retain proxy routing
+            if (!url.includes('/api/proxy')) {
+              const absoluteUrl = new URL(url, window.location.href).href;
+              xhr.open('GET', `/api/proxy?url=${encodeURIComponent(absoluteUrl)}`, true);
+            }
           }
-        }
-      });
+        });
 
-      hls.loadSource(proxiedStreamUrl);
-      hls.attachMedia(video);
+        hls.loadSource(proxiedStreamUrl);
+        hls.attachMedia(video);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(err => console.log("Autoplay blocked:", err));
-      });
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(err => console.log("Autoplay waiting for user action:", err));
+        });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log("Network error encounted, trying to recover...");
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              break;
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log("Network error encounted, attempting recovery...");
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
           }
-        }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = proxiedStreamUrl;
-      video.play();
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = proxiedStreamUrl;
+        video.play();
+      }
     }
-  }
 
-  window.onload = () => playStream(directStreamUrl);
-</script>
+    window.onload = () => playStream(directStreamUrl);
+  </script>
 </body>
 </html>
