@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPTV Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background-color: #1e293b;
+      padding: 0.75rem 1rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background-color: #0f172a;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: #38bdf8;
+    }
+
+    button, label.btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      border: none;
+      background-color: #0284c7;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    button:hover, label.btn:hover {
+      background-color: #0369a1;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .main-player {
+      flex: 3;
+      background-color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      max-height: 100vh;
+      outline: none;
+    }
+
+    .sidebar {
+      flex: 1;
+      min-width: 300px;
+      max-width: 400px;
+      background-color: #1e293b;
+      border-left: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 0.75rem;
+      background-color: #0f172a;
+      border-bottom: 1px solid #334155;
+    }
+
+    .channel-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .channel-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.9rem;
+    }
+
+    .channel-item:hover {
+      background-color: #334155;
+    }
+
+    .channel-item.active {
+      background-color: #0284c7;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .status-msg {
+      padding: 1rem;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .sidebar {
+        max-width: 100%;
+        height: 45vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <input type="text" id="playlistUrl" value="http://85st63.3074618.xyz:8080/get.php?username=szr.8156&password=VxMKL2LmSL&type=m3u_plus&output=m3u8" />
+    <button onclick="loadFromUrl()">Reload Playlist</button>
+    <label class="btn" for="fileInput">Upload Local M3U</label>
+    <input type="file" id="fileInput" accept=".m3u,.m3u8" onchange="loadFromFile(event)" />
+  </header>
+
+  <div class="container">
+    <div class="main-player">
+      <video id="video" controls autoplay></video>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <input type="text" id="filterInput" style="width: 100%;" placeholder="Search channels..." oninput="filterChannels()" />
+      </div>
+      <ul class="channel-list" id="channelList">
+        <li class="status-msg">Fetching channels...</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const channelListEl = document.getElementById('channelList');
+    let channels = [];
+    let hls = null;
+
+    function playStream(url) {
+      if (Hls.isSupported()) {
+        if (hls) hls.destroy();
+        hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {});
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+        video.play();
+      } else {
+        alert("Your browser does not support HLS streaming.");
+      }
+    }
+
+    function loadFromUrl() {
+      const url = document.getElementById('playlistUrl').value.trim();
+      if (!url) return;
+
+      channelListEl.innerHTML = '<li class="status-msg">Loading channels from server...</li>';
+
+      fetch(url)
+        .then(res => {
+          if (!res.ok) throw new Error("Server network response failed");
+          return res.text();
+        })
+        .then(text => parseM3U(text))
+        .catch(err => {
+          console.error("Fetch failed:", err);
+          channelListEl.innerHTML = `
+            <li class="status-msg" style="color: #f87171;">
+              <strong>CORS Security Blocked:</strong><br><br>
+              Browsers block direct web requests to external IPTV servers.<br><br>
+              <strong>Workaround:</strong><br>
+              1. Copy the playlist URL from the top bar.<br>
+              2. Open a new tab, paste it, and press Enter to download the file.<br>
+              3. Click <strong>"Upload Local M3U"</strong> above and select the file.
+            </li>`;
+        });
+    }
+
+    function loadFromFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => parseM3U(e.target.result);
+      reader.readAsText(file);
+    }
+
+    function parseM3U(content) {
+      const lines = content.split('\n');
+      channels = [];
+      let currentName = '';
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('#EXTINF:')) {
+          const parts = line.split(',');
+          currentName = parts.length > 1 ? parts.slice(1).join(',') : 'Channel';
+        } else if (line && !line.startsWith('#')) {
+          channels.push({
+            name: currentName || ('Channel ' + (channels.length + 1)),
+            url: line
+          });
+          currentName = '';
+        }
+      }
+
+      renderChannels(channels);
+      if (channels.length > 0) {
+        selectChannel(0);
+      }
+    }
+
+    function renderChannels(items) {
+      channelListEl.innerHTML = '';
+      if (items.length === 0) {
+        channelListEl.innerHTML = '<li class="status-msg">No channels found in playlist.</li>';
+        return;
+      }
+
+      items.forEach((ch, idx) => {
+        const li = document.createElement('li');
+        li.className = 'channel-item';
+        li.textContent = ch.name;
+        li.onclick = () => selectChannel(idx, li);
+        channelListEl.appendChild(li);
+      });
+    }
+
+    function selectChannel(index, element) {
+      document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+
+      if (element) {
+        element.classList.add('active');
+      } else {
+        const allItems = document.querySelectorAll('.channel-item');
+        if (allItems[index]) allItems[index].classList.add('active');
+      }
+
+      playStream(channels[index].url);
+    }
+
+    function filterChannels() {
+      const query = document.getElementById('filterInput').value.toLowerCase();
+      const filtered = channels.filter(ch => ch.name.toLowerCase().includes(query));
+      renderChannels(filtered);
+    }
+
+    // Automatically trigger playlist load on startup
+    window.onload = loadFromUrl;
+  </script>
+</body>
+</html>
