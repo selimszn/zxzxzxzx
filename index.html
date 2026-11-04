@@ -2,12 +2,10 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-  <!-- Load Discord Embedded App SDK -->
-  <script src="https://unpkg.com/@discord/embedded-app-sdk@1.0.0/dist/index.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Seloflix</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="/.proxy/gfonts/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg:#000; --fg:#f5f5f7; --muted:#86868b; --card:#1c1c1e; --glass:rgba(28,28,30,.72);
@@ -134,13 +132,21 @@
 
 <script>
   const KEY = 'cae0d567f5b1d9f48e8b9be207a381ae';
-  const API = 'https://api.themoviedb.org/3';
-  const IMG = 'https://image.tmdb.org/t/p/';
+  // Discord Activity URL mappings (Developer Portal → Activities → URL Mappings)
+  const API = '/.proxy/tmdb-api/3';
+  const IMG = '/.proxy/tmdb-img/t/p/';
+  const CINE = '/.proxy/cinesrc';
   const $ = id => document.getElementById(id);
 
   async function tmdb(path, extra = '') {
-    try { return await (await fetch(`${API}${path}?api_key=${KEY}&language=tr-TR${extra}`)).json(); }
-    catch { return {}; }
+    try {
+      const r = await fetch(`${API}${path}?api_key=${KEY}&language=tr-TR${extra}`);
+      if (!r.ok) return {};
+      return await r.json();
+    } catch (err) {
+      console.warn('TMDB request failed:', path, err);
+      return {};
+    }
   }
   const title = d => d.title || d.name || '';
   const year = d => (d.release_date || d.first_air_date || '').slice(0, 4);
@@ -177,8 +183,8 @@
 
   function loadFrame() {
     $('frame').src = cur.kind === 'tv'
-      ? `https://cinesrc.st/embed/tv/${cur.id}?s=${cur.season}&e=${cur.episode}`
-      : `https://cinesrc.st/embed/movie/${cur.id}`;
+      ? `${CINE}/embed/tv/${cur.id}?s=${cur.season}&e=${cur.episode}`
+      : `${CINE}/embed/movie/${cur.id}`;
   }
 
   async function openPlayer(d, kind) {
@@ -283,23 +289,16 @@
   build();
 </script>
 
-<script>
-  // Safe Discord SDK initialization wrapper that won't halt rendering if sandboxed
-  async function initializeDiscord() {
-    try {
-      if (window.DiscordSDK) {
-        const discordSdk = new window.DiscordSDK.DiscordSDK({
-          clientId: "1567593177118937289",
-        });
-        await discordSdk.ready();
-        console.log("Discord Embedded SDK is ready!");
-      }
-    } catch (error) {
-      console.warn("Discord SDK initialization skipped or failed:", error);
-    }
+<script type="module">
+  // Discord Embedded App SDK. Loaded non-blocking: if it fails, the site still works.
+  try {
+    const { DiscordSDK } = await import('/.proxy/unpkg/@discord/embedded-app-sdk@2/output/index.mjs');
+    const discordSdk = new DiscordSDK('1567593177118937289');
+    await discordSdk.ready();
+    console.log('Discord Embedded SDK is ready!');
+  } catch (error) {
+    console.warn('Discord SDK initialization skipped or failed:', error);
   }
-
-  initializeDiscord();
 </script>
 </body>
 </html>
