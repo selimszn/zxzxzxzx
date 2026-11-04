@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
   <!-- Load Discord Embedded App SDK -->
   <script src="https://unpkg.com/@discord/embedded-app-sdk@1.0.0/dist/index.js"></script>
-<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Seloflix</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -285,22 +284,22 @@
 </script>
 
 <script>
-    // Initialize the Discord SDK using your Client ID
-    const discordSdk = new window.DiscordSDK.DiscordSDK({
-      clientId: "1567593177118937289",
-    });
-
-    async function initializeDiscord() {
-      try {
+  // Safe Discord SDK initialization wrapper that won't halt rendering if sandboxed
+  async function initializeDiscord() {
+    try {
+      if (window.DiscordSDK) {
+        const discordSdk = new window.DiscordSDK.DiscordSDK({
+          clientId: "1567593177118937289",
+        });
         await discordSdk.ready();
         console.log("Discord Embedded SDK is ready!");
-      } catch (error) {
-        console.error("Failed to initialize Discord SDK:", error);
       }
+    } catch (error) {
+      console.warn("Discord SDK initialization skipped or failed:", error);
     }
+  }
 
-    initializeDiscord();
-  </script>
-
+  initializeDiscord();
+</script>
 </body>
 </html>
