@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+<meta charset="UTF-8">
+  <!-- Load Discord Embedded App SDK -->
+  <script src="https://unpkg.com/@discord/embedded-app-sdk@1.0.0/dist/index.js"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Seloflix</title>
@@ -280,5 +283,24 @@
   }
   build();
 </script>
+
+<script>
+    // Initialize the Discord SDK using your Client ID
+    const discordSdk = new window.DiscordSDK.DiscordSDK({
+      clientId: "1567593177118937289",
+    });
+
+    async function initializeDiscord() {
+      try {
+        await discordSdk.ready();
+        console.log("Discord Embedded SDK is ready!");
+      } catch (error) {
+        console.error("Failed to initialize Discord SDK:", error);
+      }
+    }
+
+    initializeDiscord();
+  </script>
+
 </body>
 </html>
