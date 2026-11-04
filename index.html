@@ -5,7 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Seloflix</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
-<link href="/.proxy/gfonts/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script>
+  // Detect Discord: Activities run on *.discordsays.com and receive frame_id in the URL.
+  // Inside Discord we use the /.proxy/ paths from URL Mappings. In a normal browser we use direct URLs.
+  window.IN_DISCORD = location.hostname.endsWith('discordsays.com') || new URLSearchParams(location.search).has('frame_id');
+  window.ENDPOINTS = window.IN_DISCORD ? {
+    api: '/.proxy/tmdb-api/3',
+    img: '/.proxy/tmdb-img/t/p/',
+    cine: '/.proxy/cinesrc',
+    unpkg: '/.proxy/unpkg',
+    gfonts: '/.proxy/gfonts'
+  } : {
+    api: 'https://api.themoviedb.org/3',
+    img: 'https://image.tmdb.org/t/p/',
+    cine: 'https://cinesrc.st',
+    unpkg: 'https://unpkg.com',
+    gfonts: 'https://fonts.googleapis.com'
+  };
+  const fontLink = document.createElement('link');
+  fontLink.rel = 'stylesheet';
+  fontLink.href = window.ENDPOINTS.gfonts + '/css2?family=Inter:wght@300;400;500;600;700&display=swap';
+  document.head.appendChild(fontLink);
+</script>
 <style>
   :root {
     --bg:#000; --fg:#f5f5f7; --muted:#86868b; --card:#1c1c1e; --glass:rgba(28,28,30,.72);
@@ -132,10 +153,7 @@
 
 <script>
   const KEY = 'cae0d567f5b1d9f48e8b9be207a381ae';
-  // Discord Activity URL mappings (Developer Portal → Activities → URL Mappings)
-  const API = '/.proxy/tmdb-api/3';
-  const IMG = '/.proxy/tmdb-img/t/p/';
-  const CINE = '/.proxy/cinesrc';
+  const { api: API, img: IMG, cine: CINE } = window.ENDPOINTS;
   const $ = id => document.getElementById(id);
 
   async function tmdb(path, extra = '') {
@@ -290,14 +308,16 @@
 </script>
 
 <script type="module">
-  // Discord Embedded App SDK. Loaded non-blocking: if it fails, the site still works.
-  try {
-    const { DiscordSDK } = await import('/.proxy/unpkg/@discord/embedded-app-sdk@2/output/index.mjs');
-    const discordSdk = new DiscordSDK('1567593177118937289');
-    await discordSdk.ready();
-    console.log('Discord Embedded SDK is ready!');
-  } catch (error) {
-    console.warn('Discord SDK initialization skipped or failed:', error);
+  // Discord SDK only loads inside Discord. In a normal browser this block does nothing.
+  if (window.IN_DISCORD) {
+    try {
+      const { DiscordSDK } = await import(`${window.ENDPOINTS.unpkg}/@discord/embedded-app-sdk@2/output/index.mjs`);
+      const discordSdk = new DiscordSDK('1567593177118937289');
+      await discordSdk.ready();
+      console.log('Discord Embedded SDK is ready!');
+    } catch (error) {
+      console.warn('Discord SDK initialization skipped or failed:', error);
+    }
   }
 </script>
 </body>
