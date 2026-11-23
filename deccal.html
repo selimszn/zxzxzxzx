@@ -5,29 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Seloflix</title>
 <link rel="icon" href="/favicon.ico">
-<script>
-  // Detect Discord: Activities run on *.discordsays.com and receive frame_id in the URL.
-  window.IN_DISCORD = location.hostname.endsWith('discordsays.com') || new URLSearchParams(location.search).has('frame_id');
-  window.ENDPOINTS = window.IN_DISCORD ? {
-    api: '/.proxy/tmdb-api/3',
-    img: '/.proxy/tmdb-img/t/p/',
-    cine: '/.proxy/cinesrc',
-    unpkg: '/.proxy/unpkg',
-    gfonts: '/.proxy/gfonts'
-  } : {
-    api: 'https://api.themoviedb.org/3',
-    img: 'https://image.tmdb.org/t/p/',
-    cine: 'https://cinesrc.st',
-    unpkg: 'https://unpkg.com',
-    gfonts: 'https://fonts.googleapis.com'
-  };
-  const pre = document.createElement('link');
-  pre.rel = 'preconnect';
-  pre.href = window.ENDPOINTS.img;
-  document.head.appendChild(pre);
-</script>
+<link rel="preconnect" href="https://image.tmdb.org">
 <style>
-:root{--bg:#000;--fg:#f5f5f7;--muted:#86868b;--tile:#1c1c1e;--glass:rgba(28,28,30,.72);--line:rgba(255,255,255,.12);--ease:cubic-bezier(.22,.61,.36,1);
+:root{--bg:#000;--fg:#f5f5f7;--muted:#86868b;--tile:#1c1c1e;--line:rgba(255,255,255,.12);--ease:cubic-bezier(.22,.61,.36,1);
 --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--fg);font-family:var(--font);-webkit-font-smoothing:antialiased}
@@ -101,7 +81,7 @@ body.lock{overflow:hidden}
 .over{margin-top:16px;color:#d2d2d7;font-weight:300;line-height:1.55;max-width:620px}
 
 .player-sec{max-width:1160px;margin:0 auto;padding:12px clamp(18px,4vw,48px) 16px}
-.shell{aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#0a0a0c;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.85)}
+.shell{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#0a0a0c;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.85)}
 .shell iframe{width:100%;height:100%;border:none;display:block}
 
 .eps{margin-top:28px}
@@ -152,7 +132,9 @@ body.lock{overflow:hidden}
 
 <script>
 const KEY = 'cae0d567f5b1d9f48e8b9be207a381ae';
-const { api: API, img: IMG, cine: CINE } = window.ENDPOINTS;
+const API = 'https://api.themoviedb.org/3';
+const IMG = 'https://image.tmdb.org/t/p/';
+const CINE = 'https://cinesrc.st';
 const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const view = html => { $('#view').innerHTML = html; };
@@ -278,6 +260,20 @@ async function loadGenre(g) {
 
 /* DETAIL & PLAYER */
 const cur = { id: null, type: 'movie', season: 1, episode: 1, seasons: [] };
+let cleanTimer = null;
+
+function scheduleFrameClean(frame) {
+  clearTimeout(cleanTimer);
+  cleanTimer = setTimeout(() => {
+    if (!frame) return;
+    try {
+      const doc = frame.contentDocument || frame.contentWindow?.document;
+      doc?.querySelectorAll('a[href="https://cinesrc.st"], a[title="Powered by CineSrc"]').forEach(el => el.remove());
+    } catch {
+      // Blocked by browser Same-Origin Policy for cross-origin iframes.
+    }
+  }, 1000);
+}
 
 function loadFrame() {
   const frame = $('#frame');
@@ -285,6 +281,7 @@ function loadFrame() {
   frame.src = cur.type === 'tv'
     ? `${CINE}/embed/tv/${cur.id}?s=${cur.season}&e=${cur.episode}`
     : `${CINE}/embed/movie/${cur.id}`;
+  scheduleFrameClean(frame);
 }
 
 function renderSeasons() {
@@ -436,20 +433,6 @@ $('#sq').addEventListener('input', e => {
 });
 
 route();
-</script>
-
-<script type="module">
-  // Discord SDK only loads inside Discord. In a normal browser this block does nothing.
-  if (window.IN_DISCORD) {
-    try {
-      const { DiscordSDK } = await import(`${window.ENDPOINTS.unpkg}/@discord/embedded-app-sdk@2/output/index.mjs`);
-      const discordSdk = new DiscordSDK('1567593177118937289');
-      await discordSdk.ready();
-      console.log('Discord Embedded SDK is ready!');
-    } catch (error) {
-      console.warn('Discord SDK initialization skipped or failed:', error);
-    }
-  }
 </script>
 </body>
 </html>
