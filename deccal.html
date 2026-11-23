@@ -5,9 +5,29 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Seloflix</title>
 <link rel="icon" href="/favicon.ico">
-<link rel="preconnect" href="https://image.tmdb.org">
+<script>
+  // Detect Discord: Activities run on *.discordsays.com and receive frame_id in the URL.
+  window.IN_DISCORD = location.hostname.endsWith('discordsays.com') || new URLSearchParams(location.search).has('frame_id');
+  window.ENDPOINTS = window.IN_DISCORD ? {
+    api: '/.proxy/tmdb-api/3',
+    img: '/.proxy/tmdb-img/t/p/',
+    cine: '/.proxy/cinesrc',
+    unpkg: '/.proxy/unpkg',
+    gfonts: '/.proxy/gfonts'
+  } : {
+    api: 'https://api.themoviedb.org/3',
+    img: 'https://image.tmdb.org/t/p/',
+    cine: 'https://cinesrc.st',
+    unpkg: 'https://unpkg.com',
+    gfonts: 'https://fonts.googleapis.com'
+  };
+  const pre = document.createElement('link');
+  pre.rel = 'preconnect';
+  pre.href = window.ENDPOINTS.img;
+  document.head.appendChild(pre);
+</script>
 <style>
-:root{--bg:#000;--fg:#f5f5f7;--muted:#86868b;--tile:#1c1c1e;--line:rgba(255,255,255,.12);--ease:cubic-bezier(.22,.61,.36,1);
+:root{--bg:#000;--fg:#f5f5f7;--muted:#86868b;--tile:#1c1c1e;--glass:rgba(28,28,30,.72);--line:rgba(255,255,255,.12);--ease:cubic-bezier(.22,.61,.36,1);
 --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--fg);font-family:var(--font);-webkit-font-smoothing:antialiased}
@@ -34,8 +54,9 @@ body.lock{overflow:hidden}
 .eyebrow{font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a1a1a6}
 .hero h1,.detail h1{font-size:clamp(2.6rem,7vw,5.6rem);font-weight:700;letter-spacing:-.04em;line-height:1;margin-top:12px}
 .hero p{margin-top:16px;max-width:560px;color:#d2d2d7;font-weight:300;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.pill{display:inline-flex;align-items:center;height:44px;padding:0 26px;margin-top:26px;border-radius:22px;background:var(--fg);color:#000;font-weight:600;transition:transform .2s var(--ease),opacity .2s}
+.pill{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 26px;margin-top:26px;border-radius:22px;background:var(--fg);color:#000;font-weight:600;transition:transform .2s var(--ease),opacity .2s}
 .pill:hover{opacity:.88}.pill:active{transform:scale(.97)}
+.pill svg{width:14px;height:14px}
 
 /* CHIPS */
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:28px 0 22px}
@@ -70,15 +91,35 @@ body.lock{overflow:hidden}
 .sr b{display:block;margin-top:10px;font-size:.85rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sr span{font-size:.72rem;color:var(--muted)}
 
-/* DETAIL */
-.detail{position:relative;min-height:88vh;display:flex;align-items:flex-end;overflow:hidden}
+/* DETAIL & PLAYER */
+.detail{position:relative;min-height:72vh;display:flex;align-items:flex-end;overflow:hidden}
 .d-bg{position:absolute;inset:0;background-size:cover;background-position:center 20%}
-.detail::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#000 3%,rgba(0,0,0,.5) 55%,rgba(0,0,0,.2)),linear-gradient(to right,rgba(0,0,0,.7),transparent 70%)}
-.d-copy{position:relative;z-index:2;max-width:760px;padding:120px clamp(18px,5vw,64px) 56px;animation:rise 1s var(--ease) both}
+.detail::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#000 3%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.2)),linear-gradient(to right,rgba(0,0,0,.75),transparent 70%)}
+.d-copy{position:relative;z-index:2;max-width:760px;padding:110px clamp(18px,5vw,64px) 44px;animation:rise 1s var(--ease) both}
 .meta{margin-top:14px;color:#a1a1a6;font-size:.9rem}
 .tag{margin-top:10px;font-style:italic;color:#d2d2d7}
 .over{margin-top:16px;color:#d2d2d7;font-weight:300;line-height:1.55;max-width:620px}
-.where{padding:56px clamp(18px,4vw,48px) 8px}
+
+.player-sec{max-width:1160px;margin:0 auto;padding:12px clamp(18px,4vw,48px) 16px}
+.shell{aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#0a0a0c;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.85)}
+.shell iframe{width:100%;height:100%;border:none;display:block}
+
+.eps{margin-top:28px}
+.seasons{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.seasons::-webkit-scrollbar{display:none}
+.spill{flex-shrink:0;height:34px;padding:0 16px;border-radius:17px;background:rgba(255,255,255,.08);font-size:.85rem;font-weight:500;color:#d2d2d7;transition:background .2s,color .2s}
+.spill:hover{background:rgba(255,255,255,.16)}
+.spill.on{background:var(--fg);color:#000}
+.eplist{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ep{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.07);text-align:left;transition:background .2s}
+.ep:hover{background:rgba(255,255,255,.14)}
+.ep.on{background:rgba(255,255,255,.22)}
+.ep i{font-style:normal;font-weight:600;font-size:.85rem;color:var(--muted);width:24px;flex-shrink:0}
+.ep.on i{color:var(--fg)}
+.ep span{font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* WATCH PROVIDERS & SIMILAR */
+.where{padding:48px clamp(18px,4vw,48px) 8px}
 .where h2,.similar h2{font-size:1.6rem;font-weight:600;letter-spacing:-.02em;margin-bottom:22px}
 .wgroup{margin-bottom:22px}
 .wgroup h3{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600;margin-bottom:10px}
@@ -88,9 +129,10 @@ body.lock{overflow:hidden}
 .prov img{width:36px;height:36px;border-radius:9px;object-fit:cover}
 .prov span{font-size:.9rem}
 .muted{color:var(--muted);font-size:.9rem;line-height:1.5}
-.similar{padding-top:56px}
+.similar{padding-top:48px}
 .similar .bento{padding-bottom:96px}
 .state{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--muted)}
+@media(max-width:600px){.shell{border-radius:12px}}
 </style>
 </head>
 <body>
@@ -110,7 +152,7 @@ body.lock{overflow:hidden}
 
 <script>
 const KEY = 'cae0d567f5b1d9f48e8b9be207a381ae';
-const API = 'https://api.themoviedb.org/3', IMG = 'https://image.tmdb.org/t/p/';
+const { api: API, img: IMG, cine: CINE } = window.ENDPOINTS;
 const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const view = html => { $('#view').innerHTML = html; };
@@ -213,7 +255,10 @@ async function showHome() {
       <div class="eyebrow">Bu hafta en çok izlenen · ${kindOf(hero) === 'tv' ? 'Dizi' : 'Film'}</div>
       <h1>${h(titleOf(hero))}</h1>
       <p>${h(hero.overview)}</p>
-      <a class="pill" data-link href="${linkOf(hero)}">Keşfet</a>
+      <a class="pill" data-link href="${linkOf(hero)}">
+        <svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 1.2v11.6a.6.6 0 0 0 .9.5l9.4-5.8a.6.6 0 0 0 0-1L2.9.7a.6.6 0 0 0-.9.5Z"/></svg>
+        Oynat
+      </a>
     </div>`;
   renderGrid(trending);
 }
@@ -231,10 +276,63 @@ async function loadGenre(g) {
   renderGrid(items);
 }
 
-/* DETAIL */
+/* DETAIL & PLAYER */
+const cur = { id: null, type: 'movie', season: 1, episode: 1, seasons: [] };
+
+function loadFrame() {
+  const frame = $('#frame');
+  if (!frame) return;
+  frame.src = cur.type === 'tv'
+    ? `${CINE}/embed/tv/${cur.id}?s=${cur.season}&e=${cur.episode}`
+    : `${CINE}/embed/movie/${cur.id}`;
+}
+
+function renderSeasons() {
+  const box = $('#seasons');
+  if (!box) return;
+  box.innerHTML = cur.seasons.map(s =>
+    `<button class="spill${s.season_number === cur.season ? ' on' : ''}" data-s="${s.season_number}">Sezon ${s.season_number}</button>`
+  ).join('');
+  box.onclick = e => {
+    const b = e.target.closest('.spill');
+    if (!b) return;
+    cur.season = Number(b.dataset.s);
+    cur.episode = 1;
+    renderSeasons();
+    renderEpisodes();
+    loadFrame();
+  };
+}
+
+async function renderEpisodes() {
+  const box = $('#eplist');
+  if (!box) return;
+  box.innerHTML = '';
+  const { id, season } = cur;
+  const data = await tmdb(`/tv/${id}/season/${season}`);
+  if (cur.id !== id || cur.season !== season || !$('#eplist')) return;
+  const eps = data?.episodes || [];
+  box.innerHTML = eps.map(ep =>
+    `<button class="ep${ep.episode_number === cur.episode ? ' on' : ''}" data-e="${ep.episode_number}">
+      <i>${ep.episode_number}</i>
+      <span>${h(ep.name || `Bölüm ${ep.episode_number}`)}</span>
+    </button>`
+  ).join('');
+  box.onclick = e => {
+    const b = e.target.closest('.ep');
+    if (!b) return;
+    cur.episode = Number(b.dataset.e);
+    renderEpisodes();
+    loadFrame();
+  };
+}
+
 async function showDetail({ id, type }) {
+  const my = routeId;
   const d = await tmdb(`/${type}/${id}`, { append_to_response: 'watch/providers,similar' });
+  if (my !== routeId) return;
   if (!d) return showMissing();
+
   const name = titleOf(d);
   const genres = (d.genres || []).map(g => g.name).join(' · ');
   const runtime = type === 'movie'
@@ -243,6 +341,16 @@ async function showDetail({ id, type }) {
   const tr = d['watch/providers']?.results?.TR;
   const groups = [['Abonelik', tr?.flatrate], ['Kiralama', tr?.rent], ['Satın alma', tr?.buy]].filter(([, a]) => a?.length);
   const similar = (d.similar?.results || []).filter(x => x.poster_path).map(x => ({ ...x, media_type: type }));
+
+  const validSeasons = type === 'tv'
+    ? (d.seasons || []).filter(s => s.season_number > 0 && s.episode_count > 0)
+    : [];
+  const seasons = type === 'tv'
+    ? (validSeasons.length ? validSeasons : [{ season_number: 1 }])
+    : [];
+  const initialSeason = seasons.length ? seasons[0].season_number : 1;
+
+  Object.assign(cur, { id, type, season: initialSeason, episode: 1, seasons });
   document.title = `${name} · Seloflix`;
 
   view(`
@@ -254,8 +362,20 @@ async function showDetail({ id, type }) {
         <div class="meta">${[yearOf(d), runtime, d.vote_average ? '★ ' + d.vote_average.toFixed(1) : ''].filter(Boolean).join(' · ')}</div>
         ${d.tagline ? `<p class="tag">${h(d.tagline)}</p>` : ''}
         <p class="over">${h(d.overview)}</p>
+        <button class="pill" id="play-jump">
+          <svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 1.2v11.6a.6.6 0 0 0 .9.5l9.4-5.8a.6.6 0 0 0 0-1L2.9.7a.6.6 0 0 0-.9.5Z"/></svg>
+          Oynat
+        </button>
       </div>
     </section>
+
+    <section class="player-sec" id="player-sec">
+      <div class="shell">
+        <iframe id="frame" allow="fullscreen; autoplay; picture-in-picture" allowfullscreen></iframe>
+      </div>
+      ${type === 'tv' ? `<div class="eps"><div class="seasons" id="seasons"></div><div class="eplist" id="eplist"></div></div>` : ''}
+    </section>
+
     <section class="where pad">
       <h2>Türkiye'de nerede izlenir</h2>
       ${groups.length
@@ -266,6 +386,14 @@ async function showDetail({ id, type }) {
     </section>
     ${similar.length ? `<section class="similar"><h2 class="pad">Benzer</h2><div class="bento" id="grid"></div></section>` : ''}
   `);
+
+  $('#play-jump').onclick = () => $('#player-sec').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  loadFrame();
+
+  if (type === 'tv') {
+    renderSeasons();
+    renderEpisodes();
+  }
   if (similar.length) renderGrid(similar, '#grid', false);
 }
 
@@ -308,6 +436,20 @@ $('#sq').addEventListener('input', e => {
 });
 
 route();
+</script>
+
+<script type="module">
+  // Discord SDK only loads inside Discord. In a normal browser this block does nothing.
+  if (window.IN_DISCORD) {
+    try {
+      const { DiscordSDK } = await import(`${window.ENDPOINTS.unpkg}/@discord/embedded-app-sdk@2/output/index.mjs`);
+      const discordSdk = new DiscordSDK('1567593177118937289');
+      await discordSdk.ready();
+      console.log('Discord Embedded SDK is ready!');
+    } catch (error) {
+      console.warn('Discord SDK initialization skipped or failed:', error);
+    }
+  }
 </script>
 </body>
 </html>
